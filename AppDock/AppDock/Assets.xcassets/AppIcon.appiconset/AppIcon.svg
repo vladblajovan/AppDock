@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- macOS rounded rect clip (squircle) -->
+    <clipPath id="iconClip">
+      <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228"/>
+    </clipPath>
+
+    <!-- Glass gradient background -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3A3F4B" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#1E2028" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Top shine for glass effect -->
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle inner shadow -->
+    <filter id="innerGlow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur"/>
+      <feOffset dx="0" dy="4" result="offsetBlur"/>
+      <feComposite in="SourceGraphic" in2="offsetBlur" operator="over"/>
+    </filter>
+
+    <!-- Shadow for the grid dots -->
+    <filter id="dotShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+
+    <!-- Glow behind grid -->
+    <radialGradient id="gridGlow" cx="0.5" cy="0.5" r="0.45">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g clip-path="url(#iconClip)">
+    <!-- Background -->
+    <rect width="1024" height="1024" fill="url(#bgGrad)"/>
+
+    <!-- Subtle radial glow in center -->
+    <rect width="1024" height="1024" fill="url(#gridGlow)"/>
+
+    <!-- Glass shine overlay -->
+    <rect width="1024" height="512" fill="url(#shine)"/>
+
+    <!-- 3x3 Grid of app dots -->
+    <g filter="url(#dotShadow)">
+      <!-- Row 1 -->
+      <circle cx="340" cy="340" r="72" fill="#FF6B6B"/>
+      <circle cx="512" cy="340" r="72" fill="#4ECDC4"/>
+      <circle cx="684" cy="340" r="72" fill="#45B7D1"/>
+
+      <!-- Row 2 -->
+      <circle cx="340" cy="512" r="72" fill="#96CEB4"/>
+      <circle cx="512" cy="512" r="72" fill="#FFEAA7"/>
+      <circle cx="684" cy="512" r="72" fill="#DDA0DD"/>
+
+      <!-- Row 3 -->
+      <circle cx="340" cy="684" r="72" fill="#F39C12"/>
+      <circle cx="512" cy="684" r="72" fill="#6C5CE7"/>
+      <circle cx="684" cy="684" r="72" fill="#55E6C1"/>
+    </g>
+
+    <!-- Top edge highlight -->
+    <rect x="0" y="0" width="1024" height="2" fill="#ffffff" opacity="0.15"/>
+  </g>
+</svg>
