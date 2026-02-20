@@ -27,8 +27,8 @@ private struct MouseBackButtonView: NSViewRepresentable {
 
 private final class MouseBackButtonNSView: NSView {
     var action: (() -> Void)?
-    private var mouseMonitor: Any?
-    private var swipeMonitor: Any?
+    private nonisolated(unsafe) var mouseMonitor: Any?
+    private nonisolated(unsafe) var swipeMonitor: Any?
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -66,7 +66,8 @@ private final class MouseBackButtonNSView: NSView {
     }
 
     deinit {
-        removeMonitors()
+        if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+        if let swipeMonitor { NSEvent.removeMonitor(swipeMonitor) }
     }
 }
 

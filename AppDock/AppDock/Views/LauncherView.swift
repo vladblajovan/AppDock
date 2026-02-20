@@ -44,16 +44,13 @@ struct LauncherView: View {
                 )
                 .padding(.horizontal, PlatformStyle.panelPadding)
                 .padding(.bottom, PlatformStyle.panelPadding)
-                .onMouseBackButton {
-                    viewModel.categoryViewModel.collapseCategory()
-                    viewModel.searchViewModel.clearActiveFolder()
-                }
             } else {
                 mainContent
             }
         }
         .frame(minWidth: PlatformStyle.panelMinWidth, maxWidth: PlatformStyle.panelMaxWidth, minHeight: 400, maxHeight: .infinity)
         .adaptiveGlassBackground()
+        .onMouseBackButton { handleMouseBack() }
         .onAppear { viewModel.onAppear() }
         .onKeyPress(.escape) {
             handleEscape()
@@ -163,12 +160,6 @@ struct LauncherView: View {
                         allAppsListView
                             .padding(.horizontal, PlatformStyle.panelPadding)
                             .padding(.top, 6)
-                            .onMouseBackButton {
-                                if viewModel.selectedListCategory != nil {
-                                    viewModel.selectedListCategory = nil
-                                    viewModel.searchViewModel.clearActiveFolder()
-                                }
-                            }
                     }
                 }
                 .padding(.bottom, PlatformStyle.panelPadding)
@@ -338,6 +329,16 @@ struct LauncherView: View {
             onCreateShortcut: { viewModel.createDesktopShortcut(app) },
             onUninstall: { viewModel.requestUninstall(app) }
         )
+    }
+
+    private func handleMouseBack() {
+        if viewModel.categoryViewModel.expandedCategory != nil {
+            viewModel.categoryViewModel.collapseCategory()
+            viewModel.searchViewModel.clearActiveFolder()
+        } else if viewModel.selectedListCategory != nil {
+            viewModel.selectedListCategory = nil
+            viewModel.searchViewModel.clearActiveFolder()
+        }
     }
 
     private func handleEscape() {
