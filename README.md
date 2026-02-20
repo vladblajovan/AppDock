@@ -63,15 +63,15 @@ AppDockApp (entry point)
 ├── Models/          SwiftData models + domain types
 ├── Core/            Services (scanning, hotkeys, window management)
 ├── Platform/        OS-adaptive styling & effects
-└── Utilities/       Fuzzy matching, icon extraction, accessibility
+└── Utilities/       Fuzzy matching, icon extraction
 ```
 
-**Key technologies:** SwiftUI, SwiftData, AppKit (NSPanel, NSVisualEffectView), CGEvent taps, CoreServices (Spotlight MDItem), Carbon (UCKeyTranslate)
+**Key technologies:** SwiftUI, SwiftData, AppKit (NSPanel, NSVisualEffectView), Carbon (RegisterEventHotKey), CoreServices (Spotlight MDItem)
 
 ## Requirements
 
 - macOS 15.0 (Sequoia) or later
-- Accessibility permission (for global hotkey)
+- Xcode 16+ to build from source
 
 ## Getting Started
 
@@ -79,10 +79,19 @@ AppDockApp (entry point)
    ```bash
    git clone https://github.com/vladblajovan/AppDock.git
    ```
-2. Open `AppDock/AppDock.xcodeproj` in Xcode
-3. Build and run (Cmd+R)
-4. Grant Accessibility permission when prompted
-5. Click the grid icon in the menu bar, or set a global hotkey in Settings
+2. Set up your local build configuration:
+   ```bash
+   cp AppDock/Config/Local.xcconfig.example AppDock/Config/Local.xcconfig
+   ```
+3. Edit `AppDock/Config/Local.xcconfig` with your Apple Developer Team ID and bundle identifier:
+   ```
+   DEVELOPMENT_TEAM = YOUR_TEAM_ID
+   PRODUCT_BUNDLE_IDENTIFIER = com.yourname.appdock
+   ```
+   You can find your Team ID in [Apple Developer account](https://developer.apple.com/account) under Membership Details, or in Xcode under Settings > Accounts.
+4. Open `AppDock/AppDock.xcodeproj` in Xcode
+5. Build and run (Cmd+R)
+6. Set a global hotkey in Settings to toggle AppDock from anywhere
 
 ## Categories
 
