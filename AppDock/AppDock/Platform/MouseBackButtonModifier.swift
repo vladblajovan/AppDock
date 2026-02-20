@@ -1,37 +1,72 @@
 import SwiftUI
+import AppKit
 
 struct MouseBackButtonModifier: ViewModifier {
     let action: () -> Void
 
-    @State private var mouseMonitor: Any?
-    @State private var swipeMonitor: Any?
-
     func body(content: Content) -> some View {
         content
-            .onAppear {
-                // Mouse back button (button 3 on most mice)
-                mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { event in
-                    if event.buttonNumber == 3 {
-                        action()
-                        return nil
-                    }
-                    return event
-                }
-                // Some mice send back as a swipe event instead
-                swipeMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) { event in
-                    if event.deltaX > 0 {
-                        action()
-                        return nil
-                    }
-                    return event
-                }
+            .background(MouseBackButtonView(action: action))
+    }
+}
+
+/// Uses an NSView to reliably tie event monitors to the view's actual lifecycle.
+private struct MouseBackButtonView: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = MouseBackButtonNSView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? MouseBackButtonNSView)?.action = action
+    }
+}
+
+private final class MouseBackButtonNSView: NSView {
+    var action: (() -> Void)?
+    private var mouseMonitor: Any?
+    private var swipeMonitor: Any?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            addMonitors()
+        } else {
+            removeMonitors()
+        }
+    }
+
+    private func addMonitors() {
+        guard mouseMonitor == nil else { return }
+
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
+            if event.buttonNumber == 3 {
+                self?.action?()
+                return nil
             }
-            .onDisappear {
-                if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
-                if let swipeMonitor { NSEvent.removeMonitor(swipeMonitor) }
-                self.mouseMonitor = nil
-                self.swipeMonitor = nil
+            return event
+        }
+        swipeMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) { [weak self] event in
+            if event.deltaX > 0 {
+                self?.action?()
+                return nil
             }
+            return event
+        }
+    }
+
+    private func removeMonitors() {
+        if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+        if let swipeMonitor { NSEvent.removeMonitor(swipeMonitor) }
+        mouseMonitor = nil
+        swipeMonitor = nil
+    }
+
+    deinit {
+        removeMonitors()
     }
 }
 

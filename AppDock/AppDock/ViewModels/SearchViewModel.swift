@@ -17,6 +17,7 @@ final class SearchViewModel {
 
     var isActive: Bool { !query.isEmpty }
     var onLaunch: ((AppItem) -> Void)?
+    var onClearFolder: (() -> Void)?
 
     private let fuzzyMatcher: FuzzyMatcher
     private var allApps: [AppItem] = []
@@ -45,6 +46,7 @@ final class SearchViewModel {
     func clearActiveFolder() {
         activeFolder = nil
         folderApps = []
+        onClearFolder?()
         if isActive { search() }
     }
 

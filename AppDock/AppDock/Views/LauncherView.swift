@@ -11,7 +11,11 @@ struct LauncherView: View {
         VStack(spacing: 0) {
             // Search bar with header controls — always visible; also acts as window drag handle
             HStack(spacing: 10) {
-                SearchBarView(viewModel: viewModel.searchViewModel)
+                SearchBarView(
+                    viewModel: viewModel.searchViewModel,
+                    showBackButton: (viewModel.viewMode == .list && viewModel.selectedListCategory != nil)
+                        || viewModel.categoryViewModel.expandedCategory != nil
+                )
 
                 Picker("", selection: viewModeBinding) {
                     Image(systemName: "square.grid.2x2").tag(AppViewMode.folders)
@@ -21,7 +25,8 @@ struct LauncherView: View {
                 .controlSize(.extraLarge)
                 .frame(width: 100)
             }
-            .padding(.horizontal, PlatformStyle.panelPadding)
+            .padding(.leading, PlatformStyle.panelPadding)
+            .padding(.trailing, PlatformStyle.panelPadding / 2)
             .padding(.top, PlatformStyle.panelPadding)
             .padding(.bottom, 16)
             .background(WindowDragView())
@@ -35,10 +40,6 @@ struct LauncherView: View {
                 CategoryDetailView(
                     category: expanded,
                     apps: viewModel.categoryViewModel.appsForCategory(expanded),
-                    onBack: {
-                        viewModel.categoryViewModel.collapseCategory()
-                        viewModel.searchViewModel.clearActiveFolder()
-                    },
                     appIconBuilder: { app in appIcon(for: app) }
                 )
                 .padding(.horizontal, PlatformStyle.panelPadding)
@@ -162,6 +163,12 @@ struct LauncherView: View {
                         allAppsListView
                             .padding(.horizontal, PlatformStyle.panelPadding)
                             .padding(.top, 6)
+                            .onMouseBackButton {
+                                if viewModel.selectedListCategory != nil {
+                                    viewModel.selectedListCategory = nil
+                                    viewModel.searchViewModel.clearActiveFolder()
+                                }
+                            }
                     }
                 }
                 .padding(.bottom, PlatformStyle.panelPadding)

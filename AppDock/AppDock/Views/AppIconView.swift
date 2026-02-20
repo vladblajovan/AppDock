@@ -76,7 +76,9 @@ struct AppIconView: View {
         .contentShape(Rectangle())
         .onTapGesture { onLaunch() }
         .onHover { hovering in
-            isHovered = hovering
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
         }
         .contextMenu { contextMenuContent }
     }

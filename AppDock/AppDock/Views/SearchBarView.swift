@@ -2,13 +2,31 @@ import SwiftUI
 
 struct SearchBarView: View {
     @Bindable var viewModel: SearchViewModel
+    var showBackButton: Bool = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16))
-                .foregroundStyle(.secondary)
+            if showBackButton {
+                Button {
+                    viewModel.clearActiveFolder()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color.primary.opacity(0.08))
+                        )
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+            }
 
             if let folder = viewModel.activeFolder {
                 HStack(spacing: 5) {

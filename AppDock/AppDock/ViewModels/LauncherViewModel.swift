@@ -42,6 +42,10 @@ final class LauncherViewModel {
         searchViewModel.onLaunch = { [weak self] app in
             self?.launchApp(app)
         }
+        searchViewModel.onClearFolder = { [weak self] in
+            self?.selectedListCategory = nil
+            self?.categoryViewModel.collapseCategory()
+        }
     }
 
     var allAppsSorted: [AppItem] {

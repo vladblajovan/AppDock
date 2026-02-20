@@ -3,7 +3,6 @@ import SwiftUI
 struct CategoryDetailView<Icon: View>: View {
     let category: AppCategory
     let apps: [AppItem]
-    let onBack: () -> Void
     let appIconBuilder: (AppItem) -> Icon
 
     private let columns = [
@@ -12,37 +11,6 @@ struct CategoryDetailView<Icon: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
-            // Header with back button
-            HStack {
-                Button(action: onBack) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                        Text("Back")
-                            .font(.system(size: 18, weight: .semibold))
-                    }
-                    .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                HStack(spacing: 7) {
-                    Image(systemName: category.sfSymbol)
-                        .font(.system(size: 18))
-                        .foregroundStyle(category.color)
-                    Text(category.rawValue)
-                        .font(.system(size: 18, weight: .semibold))
-                }
-
-                Spacer()
-
-                Text("\(apps.count) apps")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 8)
-
             ScrollView(.vertical) {
                 LazyVGrid(columns: columns, spacing: PlatformStyle.iconGridSpacing) {
                     ForEach(apps) { app in

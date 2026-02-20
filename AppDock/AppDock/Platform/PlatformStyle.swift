@@ -18,6 +18,7 @@ struct PlatformStyle {
     static var panelPadding: CGFloat { isTahoe ? 20 : 16 }
     static var sectionSpacing: CGFloat { isTahoe ? 16 : 12 }
     static var iconGridSpacing: CGFloat { isTahoe ? 10 : 8 }
+    static var categoryGridSpacing: CGFloat { isTahoe ? 20 : 16 }
 
     // MARK: - Sizes
 

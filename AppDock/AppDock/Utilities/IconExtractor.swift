@@ -6,7 +6,7 @@ final class IconExtractor {
     private let cache = NSCache<NSString, NSImage>()
 
     private init() {
-        cache.countLimit = 200
+        cache.countLimit = 500
     }
 
     func icon(for bundleURL: URL, size: CGFloat) -> NSImage {

@@ -6,11 +6,11 @@ struct CategoryGridView: View {
     var onExpandCategory: ((AppCategory) -> Void)?
 
     private let columns = [
-        GridItem(.adaptive(minimum: 180, maximum: 240), spacing: PlatformStyle.iconGridSpacing)
+        GridItem(.adaptive(minimum: 180, maximum: 240), spacing: PlatformStyle.categoryGridSpacing)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: PlatformStyle.iconGridSpacing) {
+        LazyVGrid(columns: columns, spacing: PlatformStyle.categoryGridSpacing) {
             ForEach(viewModel.nonEmptyCategories) { category in
                 CategoryTileView(
                     category: category,
