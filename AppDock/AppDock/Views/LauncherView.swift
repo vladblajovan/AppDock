@@ -9,11 +9,12 @@ struct LauncherView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search bar — always visible
+            // Search bar — always visible; also acts as window drag handle
             SearchBarView(viewModel: viewModel.searchViewModel)
                 .padding(.horizontal, PlatformStyle.panelPadding)
                 .padding(.top, PlatformStyle.panelPadding)
                 .padding(.bottom, PlatformStyle.sectionSpacing)
+                .background(WindowDragView())
 
             if viewModel.isLoading {
                 ProgressView()
@@ -139,6 +140,15 @@ struct LauncherView: View {
                         .foregroundStyle(.secondary)
 
                     Spacer()
+
+                    Button {
+                        (NSApp.delegate as? AppDelegate)?.showSettings()
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
 
                     Picker("", selection: Binding(
                         get: { viewModel.viewMode },

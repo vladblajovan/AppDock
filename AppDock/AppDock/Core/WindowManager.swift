@@ -128,13 +128,15 @@ final class WindowManager {
             effectView.material = PlatformStyle.sequoiaMaterial
             effectView.autoresizingMask = [.width, .height]
             effectView.wantsLayer = true
-            effectView.layer?.cornerRadius = PlatformStyle.panelCornerRadius
-            effectView.layer?.masksToBounds = true
             container.addSubview(effectView)
 
             hostingView.frame = container.bounds
             hostingView.autoresizingMask = [.width, .height]
             container.addSubview(hostingView)
+
+            container.wantsLayer = true
+            container.layer?.cornerRadius = PlatformStyle.panelCornerRadius
+            container.layer?.masksToBounds = true
 
             panel.contentView = container
         }

@@ -81,6 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Sync SwiftData values to UserDefaults so @AppStorage in menu bar stays current
         UserDefaults.standard.set(settings.hotkeyKeyCode, forKey: "hotkeyKeyCode")
         UserDefaults.standard.set(settings.hotkeyModifiers, forKey: "hotkeyModifiers")
+        if UserDefaults.standard.object(forKey: "showAppNames") == nil {
+            UserDefaults.standard.set(settings.showAppNames, forKey: "showAppNames")
+        }
         hotkeyManager.updateHotkey(
             keyCode: settings.hotkeyKeyCode,
             modifierFlags: CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))

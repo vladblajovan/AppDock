@@ -4,24 +4,90 @@ struct PinnedAppsRow: View {
     let viewModel: PinnedAppsViewModel
     let onLaunchApp: (AppItem) -> Void
 
+    @State private var draggingApp: AppItem?
+    @State private var dragOffset: CGSize = .zero
+    @State private var itemFrames: [String: CGRect] = [:]
+
+    private let columns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 16), spacing: PlatformStyle.iconGridSpacing)]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Pinned")
                 .font(PlatformStyle.sectionHeaderFont)
                 .foregroundStyle(.secondary)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: PlatformStyle.iconGridSpacing) {
-                    ForEach(viewModel.pinnedApps) { app in
-                        AppIconView(
-                            app: app,
-                            isPinned: true,
-                            onLaunch: { onLaunchApp(app) },
-                            onUnpin: { viewModel.unpinApp(app) }
+            LazyVGrid(columns: columns, spacing: PlatformStyle.iconGridSpacing) {
+                ForEach(viewModel.pinnedApps) { app in
+                    AppIconView(
+                        app: app,
+                        isPinned: true,
+                        onLaunch: { onLaunchApp(app) },
+                        onUnpin: { viewModel.unpinApp(app) }
+                    )
+                    .opacity(draggingApp == app ? 0.5 : 1)
+                    .scaleEffect(draggingApp == app ? 1.05 : 1)
+                    .fixedSize(horizontal: draggingApp == app, vertical: false)
+                    .offset(draggingApp == app ? dragOffset : .zero)
+                    .zIndex(draggingApp == app ? 1 : 0)
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(
+                            key: FramePreferenceKey.self,
+                            value: [app.bundleIdentifier: geo.frame(in: .named("pinnedGrid"))]
                         )
-                    }
+                    })
+                    .gesture(
+                        LongPressGesture(minimumDuration: 0.2)
+                            .sequenced(before: DragGesture(coordinateSpace: .named("pinnedGrid")))
+                            .onChanged { value in
+                                switch value {
+                                case .second(true, let drag):
+                                    if draggingApp == nil {
+                                        draggingApp = app
+                                    }
+                                    if let drag {
+                                        dragOffset = drag.translation
+                                        let dragLocation = drag.location
+                                        checkForReorder(dragLocation: dragLocation, currentApp: app)
+                                    }
+                                default:
+                                    break
+                                }
+                            }
+                            .onEnded { _ in
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    draggingApp = nil
+                                    dragOffset = .zero
+                                }
+                            }
+                    )
                 }
             }
+            .coordinateSpace(name: "pinnedGrid")
+            .onPreferenceChange(FramePreferenceKey.self) { frames in
+                itemFrames = frames
+            }
         }
+    }
+
+    private func checkForReorder(dragLocation: CGPoint, currentApp: AppItem) {
+        for (bundleID, frame) in itemFrames {
+            guard bundleID != currentApp.bundleIdentifier,
+                  frame.contains(dragLocation),
+                  let fromIndex = viewModel.pinnedApps.firstIndex(where: { $0.bundleIdentifier == currentApp.bundleIdentifier }),
+                  let toIndex = viewModel.pinnedApps.firstIndex(where: { $0.bundleIdentifier == bundleID })
+            else { continue }
+
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.movePinnedApp(from: IndexSet(integer: fromIndex), to: toIndex > fromIndex ? toIndex + 1 : toIndex)
+            }
+            break
+        }
+    }
+}
+
+private struct FramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }

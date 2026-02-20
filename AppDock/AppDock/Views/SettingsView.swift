@@ -73,6 +73,13 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
             }
 
+            Section("Display") {
+                Toggle("Show App Names", isOn: Binding(
+                    get: { viewModel.showAppNames },
+                    set: { viewModel.setShowAppNames($0) }
+                ))
+            }
+
             Section {
                 Text("On macOS 26 (Tahoe), AppDock uses Liquid Glass materials that automatically adapt to your desktop wallpaper.")
                     .font(.caption)

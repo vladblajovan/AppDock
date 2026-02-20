@@ -9,6 +9,7 @@ final class SettingsViewModel {
     var showSuggestions: Bool = true
     var launchAtLogin: Bool = false
     var useLLMClassification: Bool = true
+    var showAppNames: Bool = true
     var currentTheme: AppTheme = .system
     var hasCompletedOnboarding: Bool = false
     var onThemeChanged: ((AppTheme) -> Void)?
@@ -35,6 +36,7 @@ final class SettingsViewModel {
         self.showSuggestions = s.showSuggestions
         self.launchAtLogin = s.launchAtLogin
         self.useLLMClassification = s.useLLMClassification
+        self.showAppNames = s.showAppNames
         self.currentTheme = s.appTheme
         self.hasCompletedOnboarding = s.hasCompletedOnboarding
     }
@@ -46,6 +48,7 @@ final class SettingsViewModel {
         settings.showSuggestions = showSuggestions
         settings.launchAtLogin = launchAtLogin
         settings.useLLMClassification = useLLMClassification
+        settings.showAppNames = showAppNames
         settings.theme = currentTheme.rawValue
         settings.hasCompletedOnboarding = hasCompletedOnboarding
         try? modelContext.save()
@@ -69,6 +72,12 @@ final class SettingsViewModel {
 
     func setUseLLMClassification(_ value: Bool) {
         useLLMClassification = value
+        saveSettings()
+    }
+
+    func setShowAppNames(_ value: Bool) {
+        showAppNames = value
+        UserDefaults.standard.set(value, forKey: "showAppNames")
         saveSettings()
     }
 

@@ -20,7 +20,7 @@ struct AdaptivePanelConfigurator {
         panel.backgroundColor = .clear
         panel.level = .floating
         panel.styleMask = [.nonactivatingPanel, .fullSizeContentView, .borderless, .resizable]
-        panel.isMovableByWindowBackground = true
+        panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
 
         panel.appearance = theme.nsAppearance
@@ -36,8 +36,8 @@ struct AdaptivePanelConfigurator {
         } else {
             panel.hasShadow = true
             panel.contentView?.wantsLayer = true
-            panel.contentView?.layer?.cornerRadius = PlatformStyle.panelCornerRadius
-            panel.contentView?.layer?.masksToBounds = true
+            panel.contentView?.layer?.cornerRadius = 0
+            panel.contentView?.layer?.masksToBounds = false
         }
     }
 }

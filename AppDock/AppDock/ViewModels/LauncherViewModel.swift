@@ -71,6 +71,7 @@ final class LauncherViewModel {
 
     func launchApp(_ app: AppItem) {
         launchService.launch(app)
+        onDismiss?()
     }
 
     func pinApp(_ app: AppItem) {

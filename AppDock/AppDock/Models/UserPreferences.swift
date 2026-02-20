@@ -39,6 +39,7 @@ final class AppSettings {
     var launchAtLogin: Bool = false
     var useLLMClassification: Bool = true
     var theme: String = "System"
+    var showAppNames: Bool = true
     var hasCompletedOnboarding: Bool = false
     var lastPanelPositionX: Double?
     var lastPanelPositionY: Double?

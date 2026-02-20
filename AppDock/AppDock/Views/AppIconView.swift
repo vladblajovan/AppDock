@@ -13,6 +13,7 @@ struct AppIconView: View {
     var onCreateShortcut: (() -> Void)?
     var onUninstall: (() -> Void)?
 
+    @AppStorage("showAppNames") private var showAppNames: Bool = true
     @State private var isHovered = false
 
     init(
@@ -48,16 +49,18 @@ struct AppIconView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
 
-            Text(app.name)
-                .font(PlatformStyle.appLabelFont)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .multilineTextAlignment(.center)
-                .frame(width: size + 16, alignment: .top)
+            if showAppNames {
+                Text(app.name)
+                    .font(PlatformStyle.appLabelFont)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .multilineTextAlignment(.center)
+                    .frame(width: size + 16, alignment: .top)
+            }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: size + 40, alignment: .top)
+        .frame(height: showAppNames ? size + 40 : size + 12, alignment: .top)
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)
@@ -65,7 +68,6 @@ struct AppIconView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { onLaunch() }
-        .draggable(app.url)
         .onHover { hovering in
             isHovered = hovering
         }
