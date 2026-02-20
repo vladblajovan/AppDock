@@ -12,15 +12,21 @@ struct AppIconView: View {
     var onAddToDock: (() -> Void)?
     var onCreateShortcut: (() -> Void)?
     var onUninstall: (() -> Void)?
+    var showLabel: Bool?
 
     @AppStorage("showAppNames") private var showAppNames: Bool = true
     @State private var isHovered = false
+
+    private var shouldShowName: Bool {
+        showLabel ?? showAppNames
+    }
 
     init(
         app: AppItem,
         size: CGFloat = PlatformStyle.appIconSize,
         isPinned: Bool = false,
         canUninstall: Bool = false,
+        showLabel: Bool? = nil,
         onLaunch: @escaping () -> Void,
         onPin: (() -> Void)? = nil,
         onUnpin: (() -> Void)? = nil,
@@ -33,6 +39,7 @@ struct AppIconView: View {
         self.size = size
         self.isPinned = isPinned
         self.canUninstall = canUninstall
+        self.showLabel = showLabel
         self.onLaunch = onLaunch
         self.onPin = onPin
         self.onUnpin = onUnpin
@@ -49,7 +56,7 @@ struct AppIconView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
 
-            if showAppNames {
+            if shouldShowName {
                 Text(app.name)
                     .font(PlatformStyle.appLabelFont)
                     .foregroundStyle(.primary)
@@ -60,7 +67,7 @@ struct AppIconView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: showAppNames ? size + 40 : size + 12, alignment: .top)
+        .frame(height: shouldShowName ? size + 40 : size, alignment: .top)
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)

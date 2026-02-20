@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import ServiceManagement
 
 @MainActor
 @Observable
@@ -10,10 +11,13 @@ final class SettingsViewModel {
     var launchAtLogin: Bool = false
     var useLLMClassification: Bool = true
     var showAppNames: Bool = true
+    var showPinnedAppNames: Bool = false
+    var hideOnFocusLoss: Bool = true
     var currentTheme: AppTheme = .system
     var hasCompletedOnboarding: Bool = false
     var onThemeChanged: ((AppTheme) -> Void)?
     var onHotkeyChanged: ((Int, Int) -> Void)?
+    var onHideOnFocusLossChanged: ((Bool) -> Void)?
 
     var isLLMAvailable: Bool {
         if #available(macOS 26, *) { return true }
@@ -34,9 +38,11 @@ final class SettingsViewModel {
         self.hotkeyKeyCode = s.hotkeyKeyCode
         self.hotkeyModifiers = s.hotkeyModifiers
         self.showSuggestions = s.showSuggestions
-        self.launchAtLogin = s.launchAtLogin
+        self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.useLLMClassification = s.useLLMClassification
         self.showAppNames = s.showAppNames
+        self.showPinnedAppNames = s.showPinnedAppNames
+        self.hideOnFocusLoss = s.hideOnFocusLoss
         self.currentTheme = s.appTheme
         self.hasCompletedOnboarding = s.hasCompletedOnboarding
     }
@@ -49,6 +55,8 @@ final class SettingsViewModel {
         settings.launchAtLogin = launchAtLogin
         settings.useLLMClassification = useLLMClassification
         settings.showAppNames = showAppNames
+        settings.showPinnedAppNames = showPinnedAppNames
+        settings.hideOnFocusLoss = hideOnFocusLoss
         settings.theme = currentTheme.rawValue
         settings.hasCompletedOnboarding = hasCompletedOnboarding
         try? modelContext.save()
@@ -66,7 +74,17 @@ final class SettingsViewModel {
     }
 
     func setLaunchAtLogin(_ value: Bool) {
-        launchAtLogin = value
+        do {
+            if value {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            launchAtLogin = value
+        } catch {
+            // Registration failed — revert the toggle
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
         saveSettings()
     }
 
@@ -79,6 +97,18 @@ final class SettingsViewModel {
         showAppNames = value
         UserDefaults.standard.set(value, forKey: "showAppNames")
         saveSettings()
+    }
+
+    func setShowPinnedAppNames(_ value: Bool) {
+        showPinnedAppNames = value
+        UserDefaults.standard.set(value, forKey: "showPinnedAppNames")
+        saveSettings()
+    }
+
+    func setHideOnFocusLoss(_ value: Bool) {
+        hideOnFocusLoss = value
+        saveSettings()
+        onHideOnFocusLossChanged?(value)
     }
 
     func setHotkey(keyCode: Int, modifiers: Int) {

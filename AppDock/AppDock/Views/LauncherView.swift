@@ -41,7 +41,7 @@ struct LauncherView: View {
                 mainContent
             }
         }
-        .frame(minWidth: PlatformStyle.panelWidth, maxWidth: PlatformStyle.panelWidth, minHeight: 400, maxHeight: .infinity)
+        .frame(minWidth: PlatformStyle.panelMinWidth, maxWidth: PlatformStyle.panelMaxWidth, minHeight: 400, maxHeight: .infinity)
         .adaptiveGlassBackground()
         .onAppear { viewModel.onAppear() }
         .onKeyPress(.escape) {
@@ -96,7 +96,7 @@ struct LauncherView: View {
     // MARK: - Search Results
 
     private var searchResultsView: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        ScrollView(.vertical) {
             LazyVGrid(columns: searchResultColumns, spacing: PlatformStyle.iconGridSpacing) {
                 ForEach(Array(viewModel.searchViewModel.results.enumerated()), id: \.element.app.id) { index, result in
                     appIcon(for: result.app)
@@ -110,6 +110,7 @@ struct LauncherView: View {
             }
             .padding(.horizontal, PlatformStyle.panelPadding)
         }
+        .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .clipped()
         .padding(.bottom, PlatformStyle.panelPadding)
@@ -128,46 +129,13 @@ struct LauncherView: View {
                         onLaunchApp: { app in viewModel.launchApp(app) }
                     )
                     .padding(.horizontal, PlatformStyle.panelPadding)
-
-                    Divider()
-                        .padding(.horizontal, PlatformStyle.panelPadding)
                 }
 
                 // Categories / List header
-                HStack {
-                    Text("Apps")
-                        .font(PlatformStyle.sectionHeaderFont)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    Button {
-                        (NSApp.delegate as? AppDelegate)?.showSettings()
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-
-                    Picker("", selection: Binding(
-                        get: { viewModel.viewMode },
-                        set: { newMode in
-                            viewModel.viewMode = newMode
-                            if newMode == .folders {
-                                viewModel.selectedListCategory = nil
-                                viewModel.searchViewModel.clearActiveFolder()
-                            }
-                        }
-                    )) {
-                        Image(systemName: "square.grid.2x2").tag(AppViewMode.folders)
-                        Image(systemName: "list.bullet").tag(AppViewMode.list)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 80)
-                }
+                headerControls
                 .padding(.leading, PlatformStyle.panelPadding)
                 .padding(.trailing, PlatformStyle.panelPadding / 2)
+                .padding(.top, viewModel.pinnedAppsViewModel.isEmpty ? -18 : 0)
 
                 if viewModel.viewMode == .list {
                     categoryCarousel
@@ -204,10 +172,66 @@ struct LauncherView: View {
         )
     }
 
+    // MARK: - Header Controls
+
+    private var viewModeBinding: Binding<AppViewMode> {
+        Binding(
+            get: { viewModel.viewMode },
+            set: { setViewMode($0) }
+        )
+    }
+
+    private func setViewMode(_ newMode: AppViewMode) {
+        viewModel.viewMode = newMode
+        if newMode == .folders {
+            viewModel.selectedListCategory = nil
+            viewModel.searchViewModel.clearActiveFolder()
+        }
+    }
+
+    private var headerControls: some View {
+        HStack {
+            Text("Apps")
+                .font(PlatformStyle.sectionHeaderFont)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if #available(macOS 26, *) {
+                Button {
+                    viewModel.onShowSettings?()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .padding(6)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive())
+                .controlSize(.large)
+            } else {
+                Button {
+                    viewModel.onShowSettings?()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+
+            Picker("", selection: viewModeBinding) {
+                Image(systemName: "square.grid.2x2").tag(AppViewMode.folders)
+                Image(systemName: "list.bullet").tag(AppViewMode.list)
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.large)
+            .frame(width: 90)
+        }
+    }
+
     // MARK: - Category Carousel
 
     private var categoryCarousel: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 6) {
                 ForEach(viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }) { category in
                     categoryChip(category: category)
@@ -215,6 +239,7 @@ struct LauncherView: View {
             }
             .padding(.trailing, 4)
         }
+        .scrollIndicators(.hidden)
     }
 
     private func categoryChip(category: AppCategory) -> some View {

@@ -4,23 +4,26 @@ struct PinnedAppsRow: View {
     let viewModel: PinnedAppsViewModel
     let onLaunchApp: (AppItem) -> Void
 
+    @AppStorage("showPinnedAppNames") private var showPinnedAppNames: Bool = false
     @State private var draggingApp: AppItem?
     @State private var dragOffset: CGSize = .zero
     @State private var itemFrames: [String: CGRect] = [:]
 
-    private let columns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 16), spacing: PlatformStyle.iconGridSpacing)]
+    private let columns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 4), spacing: 4)]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Pinned")
                 .font(PlatformStyle.sectionHeaderFont)
                 .foregroundStyle(.secondary)
+                .padding(.top, -16)
 
-            LazyVGrid(columns: columns, spacing: PlatformStyle.iconGridSpacing) {
+            LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(viewModel.pinnedApps) { app in
                     AppIconView(
                         app: app,
                         isPinned: true,
+                        showLabel: showPinnedAppNames,
                         onLaunch: { onLaunchApp(app) },
                         onUnpin: { viewModel.unpinApp(app) }
                     )

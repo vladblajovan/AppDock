@@ -40,7 +40,9 @@ final class AppSettings {
     var useLLMClassification: Bool = true
     var theme: String = "System"
     var showAppNames: Bool = true
+    var showPinnedAppNames: Bool = false
     var hasCompletedOnboarding: Bool = false
+    var hideOnFocusLoss: Bool = true
     var lastPanelPositionX: Double?
     var lastPanelPositionY: Double?
     var lastPanelHeight: Double?

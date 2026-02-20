@@ -17,6 +17,7 @@ final class LauncherViewModel {
     var appPendingUninstall: AppItem? = nil
     var uninstallError: String? = nil
     var onDismiss: (() -> Void)?
+    var onShowSettings: (() -> Void)?
 
     // MARK: - Child ViewModels
     let searchViewModel = SearchViewModel()

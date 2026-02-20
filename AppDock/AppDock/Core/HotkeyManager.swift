@@ -95,7 +95,7 @@ final class HotkeyManager {
     private func registerHotkey() {
         guard keyCode >= 0 else { return }
 
-        var id = HotkeyManager.hotkeyID
+        let id = HotkeyManager.hotkeyID
         let carbonModifiers = carbonModifierFlags(from: modifierFlags)
 
         let status = RegisterEventHotKey(

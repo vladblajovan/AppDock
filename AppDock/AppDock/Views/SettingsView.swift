@@ -52,6 +52,11 @@ struct SettingsView: View {
                     get: { viewModel.launchAtLogin },
                     set: { viewModel.setLaunchAtLogin($0) }
                 ))
+
+                Toggle("Hide when clicking outside", isOn: Binding(
+                    get: { viewModel.hideOnFocusLoss },
+                    set: { viewModel.setHideOnFocusLoss($0) }
+                ))
             }
         }
         .formStyle(.grouped)
@@ -77,6 +82,11 @@ struct SettingsView: View {
                 Toggle("Show App Names", isOn: Binding(
                     get: { viewModel.showAppNames },
                     set: { viewModel.setShowAppNames($0) }
+                ))
+
+                Toggle("Show Pinned App Names", isOn: Binding(
+                    get: { viewModel.showPinnedAppNames },
+                    set: { viewModel.setShowPinnedAppNames($0) }
                 ))
             }
 

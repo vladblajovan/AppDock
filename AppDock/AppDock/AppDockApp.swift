@@ -71,18 +71,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherViewModel.onDismiss = { [weak self] in
             self?.windowManager.hidePanel()
         }
+        launcherViewModel.onShowSettings = { [weak self] in
+            self?.showSettings()
+        }
         windowManager.setContentView(LauncherView(viewModel: launcherViewModel))
 
         // Load settings and apply theme + hotkey
         let settings = SettingsHelper.getOrCreate(context: modelContext)
         let theme = AppTheme(rawValue: settings.theme) ?? .system
         windowManager.theme = theme
+        windowManager.hideOnFocusLoss = settings.hideOnFocusLoss
 
         // Sync SwiftData values to UserDefaults so @AppStorage in menu bar stays current
         UserDefaults.standard.set(settings.hotkeyKeyCode, forKey: "hotkeyKeyCode")
         UserDefaults.standard.set(settings.hotkeyModifiers, forKey: "hotkeyModifiers")
         if UserDefaults.standard.object(forKey: "showAppNames") == nil {
             UserDefaults.standard.set(settings.showAppNames, forKey: "showAppNames")
+        }
+        if UserDefaults.standard.object(forKey: "showPinnedAppNames") == nil {
+            UserDefaults.standard.set(settings.showPinnedAppNames, forKey: "showPinnedAppNames")
         }
         hotkeyManager.updateHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -115,6 +122,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settingsVM.onThemeChanged = { [weak self] theme in
             self?.applyTheme(theme)
         }
+        settingsVM.onHideOnFocusLossChanged = { [weak self] value in
+            self?.windowManager.hideOnFocusLoss = value
+        }
         settingsVM.onHotkeyChanged = { [weak self] keyCode, modifiers in
             UserDefaults.standard.set(keyCode, forKey: "hotkeyKeyCode")
             UserDefaults.standard.set(modifiers, forKey: "hotkeyModifiers")
@@ -136,7 +146,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.level = .floating + 1
         window.appearance = windowManager.theme.nsAppearance
         window.contentView = hostingView
-        window.center()
+        // Position centered over the AppDock panel, or fall back to screen center
+        if let panelFrame = windowManager.panelFrame {
+            let x = panelFrame.midX - 450 / 2
+            let y = panelFrame.midY - 350 / 2
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        } else {
+            window.center()
+        }
         window.isReleasedWhenClosed = false
         window.delegate = self
         settingsWindow = window

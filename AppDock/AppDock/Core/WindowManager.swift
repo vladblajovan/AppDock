@@ -8,6 +8,17 @@ final class WindowManager {
     private(set) var isVisible = false
     private var lastHideTime: Date = .distantPast
     var theme: AppTheme = .system
+    var hideOnFocusLoss: Bool = true {
+        didSet {
+            if isVisible {
+                if hideOnFocusLoss {
+                    startClickOutsideMonitor()
+                } else {
+                    stopClickOutsideMonitor()
+                }
+            }
+        }
+    }
 
     func togglePanel() {
         if isVisible {
@@ -18,6 +29,7 @@ final class WindowManager {
     }
 
     private static let panelHeightKey = "AppDock.panelHeight"
+    private static let panelWidthKey = "AppDock.panelWidth"
     private static let panelOriginXKey = "AppDock.panelOriginX"
     private static let panelOriginYKey = "AppDock.panelOriginY"
 
@@ -28,8 +40,11 @@ final class WindowManager {
         let savedHeight = UserDefaults.standard.double(forKey: Self.panelHeightKey)
         let height = savedHeight > 0 ? max(400, min(savedHeight, 1200)) : PlatformStyle.panelHeight
 
+        let savedWidth = UserDefaults.standard.double(forKey: Self.panelWidthKey)
+        let width = savedWidth > 0 ? max(PlatformStyle.panelMinWidth, min(savedWidth, PlatformStyle.panelMaxWidth)) : PlatformStyle.panelDefaultWidth
+
         let screenFrame = activeScreenFrame()
-        let panelSize = NSSize(width: PlatformStyle.panelWidth, height: height)
+        let panelSize = NSSize(width: width, height: height)
 
         let origin: NSPoint
         let defaults = UserDefaults.standard
@@ -55,7 +70,9 @@ final class WindowManager {
         panel.makeKey()
 
         isVisible = true
-        startClickOutsideMonitor()
+        if hideOnFocusLoss {
+            startClickOutsideMonitor()
+        }
     }
 
     func hidePanel() {
@@ -84,6 +101,11 @@ final class WindowManager {
         }
     }
 
+    var panelFrame: NSRect? {
+        guard let panel, isVisible else { return nil }
+        return panel.frame
+    }
+
     func applyTheme() {
         guard let panel else { return }
         panel.appearance = theme.nsAppearance
@@ -99,7 +121,7 @@ final class WindowManager {
             // to keep the window server sending live behind-window content even
             // when the panel is not focused. We make it invisible (alphaValue = 0)
             // so it doesn't affect the glass appearance.
-            let container = NSView(frame: NSRect(x: 0, y: 0, width: PlatformStyle.panelWidth, height: PlatformStyle.panelHeight))
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: PlatformStyle.panelDefaultWidth, height: PlatformStyle.panelHeight))
 
             let effectView = NSVisualEffectView(frame: container.bounds)
             effectView.blendingMode = .behindWindow
@@ -116,11 +138,15 @@ final class WindowManager {
             hostingView.autoresizingMask = [.width, .height]
             container.addSubview(hostingView)
 
+            container.wantsLayer = true
+            container.layer?.cornerRadius = PlatformStyle.panelCornerRadius
+            container.layer?.masksToBounds = true
+
             panel.contentView = container
         } else {
             // On macOS 15, use NSVisualEffectView with .behindWindow blending
             // for live behind-window transparency.
-            let container = NSView(frame: NSRect(x: 0, y: 0, width: PlatformStyle.panelWidth, height: PlatformStyle.panelHeight))
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: PlatformStyle.panelDefaultWidth, height: PlatformStyle.panelHeight))
 
             let effectView = NSVisualEffectView(frame: container.bounds)
             effectView.blendingMode = .behindWindow
@@ -150,7 +176,7 @@ final class WindowManager {
         if let existing = panel { return existing }
 
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: PlatformStyle.panelWidth, height: PlatformStyle.panelHeight),
+            contentRect: NSRect(x: 0, y: 0, width: PlatformStyle.panelDefaultWidth, height: PlatformStyle.panelHeight),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless, .resizable],
             backing: .buffered,
             defer: false
@@ -160,20 +186,28 @@ final class WindowManager {
         panel.animationBehavior = .utilityWindow
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
-        panel.minSize = NSSize(width: PlatformStyle.panelWidth, height: 400)
-        panel.maxSize = NSSize(width: PlatformStyle.panelWidth, height: 1200)
+        panel.minSize = NSSize(width: PlatformStyle.panelMinWidth, height: 400)
+        panel.maxSize = NSSize(width: PlatformStyle.panelMaxWidth, height: 1200)
+        let heightKey = Self.panelHeightKey
+        let widthKey = Self.panelWidthKey
+        let originXKey = Self.panelOriginXKey
+        let originYKey = Self.panelOriginYKey
         panel.onResize = { size in
-            UserDefaults.standard.set(size.height, forKey: WindowManager.panelHeightKey)
+            UserDefaults.standard.set(size.height, forKey: heightKey)
+            UserDefaults.standard.set(size.width, forKey: widthKey)
         }
         NotificationCenter.default.addObserver(
             forName: NSWindow.didMoveNotification,
             object: panel,
             queue: .main
         ) { [weak panel] _ in
-            guard let origin = panel?.frame.origin,
-                  panel?.suppressFrameSave != true else { return }
-            UserDefaults.standard.set(origin.x, forKey: WindowManager.panelOriginXKey)
-            UserDefaults.standard.set(origin.y, forKey: WindowManager.panelOriginYKey)
+            MainActor.assumeIsolated {
+                guard let panel,
+                      !panel.suppressFrameSave else { return }
+                let origin = panel.frame.origin
+                UserDefaults.standard.set(origin.x, forKey: originXKey)
+                UserDefaults.standard.set(origin.y, forKey: originYKey)
+            }
         }
 
         self.panel = panel

@@ -41,6 +41,7 @@ struct CategoryDetailView<Icon: View>: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
+            .padding(.top, 4)
 
             ScrollView(.vertical) {
                 LazyVGrid(columns: columns, spacing: PlatformStyle.iconGridSpacing) {

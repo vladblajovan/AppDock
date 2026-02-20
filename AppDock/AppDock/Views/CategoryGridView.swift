@@ -6,7 +6,7 @@ struct CategoryGridView: View {
     var onExpandCategory: ((AppCategory) -> Void)?
 
     private let columns = [
-        GridItem(.adaptive(minimum: 195, maximum: 220), spacing: PlatformStyle.iconGridSpacing)
+        GridItem(.adaptive(minimum: 180, maximum: 240), spacing: PlatformStyle.iconGridSpacing)
     ]
 
     var body: some View {
@@ -33,16 +33,14 @@ struct CategoryTileView: View {
 
     @State private var isHovered = false
 
-    private let previewColumns = [
-        GridItem(.fixed(PlatformStyle.categoryPreviewIconSize), spacing: 6),
-        GridItem(.fixed(PlatformStyle.categoryPreviewIconSize), spacing: 6),
-        GridItem(.fixed(PlatformStyle.categoryPreviewIconSize), spacing: 6),
-    ]
+    private let iconSpacing: CGFloat = 6
+    private let titleHeight: CGFloat = 20
+    private let titleGap: CGFloat = 12
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 6) {
-                // Category name centered at top
+            VStack(spacing: titleGap) {
+                // Title row
                 HStack(spacing: 5) {
                     Image(systemName: category.sfSymbol)
                         .font(.system(size: 14))
@@ -51,42 +49,46 @@ struct CategoryTileView: View {
                     Text(category.rawValue)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
                 }
-                .frame(height: 36, alignment: .top)
+                .frame(height: titleHeight)
 
-                // 2x2 icon preview
-                LazyVGrid(columns: previewColumns, spacing: 6) {
-                    ForEach(previewApps) { app in
-                        Image(nsImage: IconExtractor.shared.icon(for: app.url, size: PlatformStyle.categoryPreviewIconSize))
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(
-                                width: PlatformStyle.categoryPreviewIconSize,
-                                height: PlatformStyle.categoryPreviewIconSize
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                // Square 3×3 grid area
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay {
+                        GeometryReader { geo in
+                            let size = geo.size.width
+                            let iconSize = max(0, (size - iconSpacing * 2) / 3)
+
+                            VStack(spacing: iconSpacing) {
+                                ForEach(0..<3, id: \.self) { row in
+                                    HStack(spacing: iconSpacing) {
+                                        ForEach(0..<3, id: \.self) { col in
+                                            let index = row * 3 + col
+                                            if index < previewApps.count {
+                                                Image(nsImage: IconExtractor.shared.icon(for: previewApps[index].url, size: 56))
+                                                    .resizable()
+                                                    .aspectRatio(1, contentMode: .fit)
+                                                    .frame(width: iconSize, height: iconSize)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                            } else {
+                                                Color.clear
+                                                    .frame(width: iconSize, height: iconSize)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-
-                    // Invisible placeholders to keep grid size consistent
-                    ForEach(0..<max(0, 9 - previewApps.count), id: \.self) { _ in
-                        Color.clear
-                            .frame(
-                                width: PlatformStyle.categoryPreviewIconSize,
-                                height: PlatformStyle.categoryPreviewIconSize
-                            )
-                    }
-                }
-
             }
-            .padding(.top, 8)
-            .padding(.bottom, 10)
-            .padding(.horizontal, 10)
+            .padding(PlatformStyle.tilePaddingH)
             .background(
                 RoundedRectangle(cornerRadius: PlatformStyle.categoryTileCornerRadius)
                     .fill(isHovered ? PlatformStyle.categoryTileHoverBackground : PlatformStyle.categoryTileBackground)
             )
+            .clipShape(RoundedRectangle(cornerRadius: PlatformStyle.categoryTileCornerRadius))
         }
         .buttonStyle(.plain)
         .onHover { hovering in
