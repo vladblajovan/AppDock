@@ -9,12 +9,22 @@ struct LauncherView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search bar — always visible; also acts as window drag handle
-            SearchBarView(viewModel: viewModel.searchViewModel)
-                .padding(.horizontal, PlatformStyle.panelPadding)
-                .padding(.top, PlatformStyle.panelPadding)
-                .padding(.bottom, PlatformStyle.sectionSpacing)
-                .background(WindowDragView())
+            // Search bar with header controls — always visible; also acts as window drag handle
+            HStack(spacing: 10) {
+                SearchBarView(viewModel: viewModel.searchViewModel)
+
+                Picker("", selection: viewModeBinding) {
+                    Image(systemName: "square.grid.2x2").tag(AppViewMode.folders)
+                    Image(systemName: "list.bullet").tag(AppViewMode.list)
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.extraLarge)
+                .frame(width: 100)
+            }
+            .padding(.horizontal, PlatformStyle.panelPadding)
+            .padding(.top, PlatformStyle.panelPadding)
+            .padding(.bottom, 16)
+            .background(WindowDragView())
 
             if viewModel.isLoading {
                 ProgressView()
@@ -119,57 +129,55 @@ struct LauncherView: View {
     // MARK: - Main Content
 
     private var mainContent: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
-                Spacer().frame(height: 4)
-                // Pinned apps
-                if !viewModel.pinnedAppsViewModel.isEmpty {
-                    PinnedAppsRow(
-                        viewModel: viewModel.pinnedAppsViewModel,
-                        onLaunchApp: { app in viewModel.launchApp(app) }
-                    )
-                    .padding(.horizontal, PlatformStyle.panelPadding)
-                }
-
-                // Categories / List header
-                headerControls
-                .padding(.leading, PlatformStyle.panelPadding)
-                .padding(.trailing, PlatformStyle.panelPadding / 2)
-                .padding(.top, viewModel.pinnedAppsViewModel.isEmpty ? -18 : 0)
-
-                if viewModel.viewMode == .list {
-                    categoryCarousel
-                        .padding(.horizontal, PlatformStyle.panelPadding)
-                }
-
-                if viewModel.viewMode == .folders {
-                    CategoryGridView(
-                        viewModel: viewModel.categoryViewModel,
-                        onLaunchApp: { app in viewModel.launchApp(app) },
-                        onExpandCategory: { category in
-                            let apps = viewModel.categoryViewModel.appsForCategory(category)
-                            viewModel.searchViewModel.setActiveFolder(category, apps: apps)
-                        }
-                    )
-                    .padding(.horizontal, PlatformStyle.panelPadding)
-                } else {
-                    allAppsListView
-                        .padding(.horizontal, PlatformStyle.panelPadding)
-                }
+        VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
+            // Pinned apps
+            if !viewModel.pinnedAppsViewModel.isEmpty {
+                PinnedAppsRow(
+                    viewModel: viewModel.pinnedAppsViewModel,
+                    onLaunchApp: { app in viewModel.launchApp(app) }
+                )
+                .padding(.horizontal, PlatformStyle.panelPadding)
             }
-            .padding(.bottom, PlatformStyle.panelPadding)
+
+            if viewModel.viewMode == .list {
+                categoryCarousel
+                    .padding(.horizontal, PlatformStyle.panelPadding)
+                    .padding(.top, 4)
+            }
+
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
+                    if viewModel.viewMode == .folders {
+                        CategoryGridView(
+                            viewModel: viewModel.categoryViewModel,
+                            onLaunchApp: { app in viewModel.launchApp(app) },
+                            onExpandCategory: { category in
+                                let apps = viewModel.categoryViewModel.appsForCategory(category)
+                                viewModel.searchViewModel.setActiveFolder(category, apps: apps)
+                            }
+                        )
+                        .padding(.horizontal, PlatformStyle.panelPadding)
+                        .padding(.top, 6)
+                    } else {
+                        allAppsListView
+                            .padding(.horizontal, PlatformStyle.panelPadding)
+                            .padding(.top, 6)
+                    }
+                }
+                .padding(.bottom, PlatformStyle.panelPadding)
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .clipped()
+            .mask(
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 8)
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 12)
+                }
+            )
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-        .clipped()
-        .mask(
-            VStack(spacing: 0) {
-                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 12)
-                Color.black
-                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 12)
-            }
-        )
     }
 
     // MARK: - Header Controls
@@ -257,9 +265,11 @@ struct LauncherView: View {
             HStack(spacing: 7) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: 13))
+                    .foregroundStyle(category.color)
                 Text(category.rawValue)
                     .font(.system(size: 14, weight: .medium))
                     .lineLimit(1)
+                    .foregroundStyle(isSelected ? Color.primary : .secondary)
             }
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
@@ -267,7 +277,6 @@ struct LauncherView: View {
                 Capsule()
                     .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.primary.opacity(0.08))
             )
-            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
         }
         .buttonStyle(.plain)
     }

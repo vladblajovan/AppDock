@@ -177,10 +177,15 @@ final class WindowManager {
 
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: PlatformStyle.panelDefaultWidth, height: PlatformStyle.panelHeight),
-            styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless, .resizable],
+            styleMask: [.nonactivatingPanel, .fullSizeContentView, .titled, .resizable],
             backing: .buffered,
             defer: false
         )
+        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .hidden
+        panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.animationBehavior = .utilityWindow

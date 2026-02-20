@@ -24,6 +24,20 @@ extension View {
     }
 }
 
+struct GlassTileModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let isHovered: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: cornerRadius))
+        } else {
+            content
+        }
+    }
+}
+
 struct VisualEffectBlur: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode

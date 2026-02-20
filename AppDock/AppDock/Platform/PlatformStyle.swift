@@ -9,9 +9,9 @@ struct PlatformStyle {
     // MARK: - Corner Radii
 
     static var panelCornerRadius: CGFloat { isTahoe ? 22 : 16 }
-    static var categoryTileCornerRadius: CGFloat { isTahoe ? 16 : 12 }
+    static var categoryTileCornerRadius: CGFloat { isTahoe ? 22 : 16 }
     static var appIconContainerRadius: CGFloat { isTahoe ? 14 : 10 }
-    static var searchFieldCornerRadius: CGFloat { isTahoe ? 12 : 8 }
+    static var searchFieldCornerRadius: CGFloat { isTahoe ? 22 : 16 }
 
     // MARK: - Spacing
 

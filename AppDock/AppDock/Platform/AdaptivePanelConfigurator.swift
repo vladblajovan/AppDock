@@ -19,7 +19,7 @@ struct AdaptivePanelConfigurator {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.level = .floating
-        panel.styleMask = [.nonactivatingPanel, .fullSizeContentView, .borderless, .resizable]
+        panel.styleMask = [.nonactivatingPanel, .fullSizeContentView, .titled, .resizable]
         panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
 
