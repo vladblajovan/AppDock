@@ -3,6 +3,11 @@ import SwiftUI
 struct LauncherView: View {
     var viewModel: LauncherViewModel
 
+    // Category carousel drag state
+    @State private var draggingCategory: AppCategory?
+    @State private var categoryDragOffset: CGSize = .zero
+    @State private var chipFrames: [String: CGRect] = [:]
+
     private let searchResultColumns = [
         GridItem(.adaptive(minimum: 88, maximum: 110), spacing: PlatformStyle.iconGridSpacing)
     ]
@@ -14,7 +19,8 @@ struct LauncherView: View {
                 SearchBarView(
                     viewModel: viewModel.searchViewModel,
                     showBackButton: (viewModel.viewMode == .list && viewModel.selectedListCategory != nil)
-                        || viewModel.categoryViewModel.expandedCategory != nil
+                        || viewModel.categoryViewModel.expandedCategory != nil,
+                    showFolderChip: viewModel.viewMode == .folders
                 )
 
                 Picker("", selection: viewModeBinding) {
@@ -117,26 +123,17 @@ struct LauncherView: View {
                 }
             }
             .padding(.horizontal, PlatformStyle.panelPadding)
+            .padding(.bottom, PlatformStyle.panelPadding)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .clipped()
-        .padding(.bottom, PlatformStyle.panelPadding)
     }
 
     // MARK: - Main Content
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
-            // Pinned apps
-            if !viewModel.pinnedAppsViewModel.isEmpty {
-                PinnedAppsRow(
-                    viewModel: viewModel.pinnedAppsViewModel,
-                    onLaunchApp: { app in viewModel.launchApp(app) }
-                )
-                .padding(.horizontal, PlatformStyle.panelPadding)
-            }
-
             if viewModel.viewMode == .list {
                 categoryCarousel
                     .padding(.horizontal, PlatformStyle.panelPadding)
@@ -145,6 +142,14 @@ struct LauncherView: View {
 
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
+                    // Pinned apps
+                    if !viewModel.pinnedAppsViewModel.isEmpty {
+                        PinnedAppsRow(
+                            viewModel: viewModel.pinnedAppsViewModel,
+                            onLaunchApp: { app in viewModel.launchApp(app) }
+                        )
+                    }
+
                     if viewModel.viewMode == .folders {
                         CategoryGridView(
                             viewModel: viewModel.categoryViewModel,
@@ -152,16 +157,17 @@ struct LauncherView: View {
                             onExpandCategory: { category in
                                 let apps = viewModel.categoryViewModel.appsForCategory(category)
                                 viewModel.searchViewModel.setActiveFolder(category, apps: apps)
-                            }
+                            },
+                            hasNewOrUpdatedApps: { viewModel.hasNewOrUpdatedApps(in: $0) },
+                            aggregateBadgeCount: { viewModel.badgeCount(for: $0) }
                         )
-                        .padding(.horizontal, PlatformStyle.panelPadding)
-                        .padding(.top, 6)
+                        .padding(.top, 14)
                     } else {
                         allAppsListView
-                            .padding(.horizontal, PlatformStyle.panelPadding)
-                            .padding(.top, 6)
+                            .padding(.top, 14)
                     }
                 }
+                .padding(.horizontal, PlatformStyle.panelPadding)
                 .padding(.bottom, PlatformStyle.panelPadding)
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -169,7 +175,7 @@ struct LauncherView: View {
             .mask(
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 8)
+                        .frame(height: 0)
                     Color.black
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
                         .frame(height: 12)
@@ -237,46 +243,128 @@ struct LauncherView: View {
     // MARK: - Category Carousel
 
     private var categoryCarousel: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                ForEach(viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }) { category in
-                    categoryChip(category: category)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }) { category in
+                        categoryChip(category: category)
+                            .id(category)
+                    }
+                }
+                .padding(.trailing, 4)
+                .coordinateSpace(name: "categoryCarousel")
+                .onPreferenceChange(CategoryFramePreferenceKey.self) { frames in
+                    chipFrames = frames
                 }
             }
-            .padding(.trailing, 4)
+            .scrollIndicators(.hidden)
+            .scrollDisabled(draggingCategory != nil)
         }
-        .scrollIndicators(.hidden)
     }
+
+    @State private var didDragMove = false
 
     private func categoryChip(category: AppCategory) -> some View {
         let isSelected = viewModel.selectedListCategory == category
-        return Button {
-            if isSelected {
-                viewModel.selectedListCategory = nil
-                viewModel.searchViewModel.clearActiveFolder()
-            } else {
-                viewModel.selectedListCategory = category
-                let apps = viewModel.categoryViewModel.appsForCategory(category)
-                viewModel.searchViewModel.setActiveFolder(category, apps: apps)
-            }
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: category.sfSymbol)
-                    .font(.system(size: 13))
-                    .foregroundStyle(category.color)
-                Text(category.rawValue)
-                    .font(.system(size: 14, weight: .medium))
-                    .lineLimit(1)
-                    .foregroundStyle(isSelected ? Color.primary : .secondary)
-            }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.primary.opacity(0.08))
-            )
+        let isDragging = draggingCategory == category
+        return HStack(spacing: 7) {
+            Image(systemName: category.sfSymbol)
+                .font(.system(size: 13))
+                .foregroundStyle(category.color)
+            Text(category.rawValue)
+                .font(.system(size: 14, weight: .medium))
+                .lineLimit(1)
+                .foregroundStyle(isSelected ? Color.primary : .secondary)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.primary.opacity(0.08))
+        )
+        .contentShape(Capsule())
+        .opacity(isDragging ? 0.5 : 1)
+        .scaleEffect(isDragging ? 1.05 : 1)
+        .offset(isDragging ? categoryDragOffset : .zero)
+        .zIndex(isDragging ? 1 : 0)
+        .background(GeometryReader { geo in
+            Color.clear.preference(
+                key: CategoryFramePreferenceKey.self,
+                value: [category.rawValue: geo.frame(in: .named("categoryCarousel"))]
+            )
+        })
+        .gesture(
+            LongPressGesture(minimumDuration: 0.25)
+                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("categoryCarousel")))
+                .onChanged { value in
+                    switch value {
+                    case .second(true, let drag):
+                        if draggingCategory == nil {
+                            draggingCategory = category
+                            didDragMove = false
+                        }
+                        if let drag {
+                            categoryDragOffset = drag.translation
+                            if abs(drag.translation.width) > 2 || abs(drag.translation.height) > 2 {
+                                didDragMove = true
+                            }
+                            checkForCategoryReorder(dragLocation: drag.location, current: category)
+                        }
+                    default:
+                        break
+                    }
+                }
+                .onEnded { _ in
+                    let wasDrag = didDragMove
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        draggingCategory = nil
+                        categoryDragOffset = .zero
+                    }
+                    // If the user long-pressed without dragging, treat as a tap
+                    if !wasDrag {
+                        handleCategoryTap(category)
+                    }
+                    didDragMove = false
+                }
+        )
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded {
+                    guard draggingCategory == nil else { return }
+                    handleCategoryTap(category)
+                }
+        )
+    }
+
+    private func handleCategoryTap(_ category: AppCategory) {
+        if viewModel.selectedListCategory == category {
+            viewModel.selectedListCategory = nil
+            viewModel.searchViewModel.clearActiveFolder()
+        } else {
+            viewModel.selectedListCategory = category
+            let apps = viewModel.categoryViewModel.appsForCategory(category)
+            viewModel.searchViewModel.setActiveFolder(category, apps: apps)
+        }
+    }
+
+    private func checkForCategoryReorder(dragLocation: CGPoint, current: AppCategory) {
+        let categories = viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }
+        for (rawValue, frame) in chipFrames {
+            guard rawValue != current.rawValue,
+                  frame.contains(dragLocation),
+                  let fromIndex = categories.firstIndex(of: current),
+                  let target = categories.first(where: { $0.rawValue == rawValue }),
+                  let toIndex = categories.firstIndex(of: target)
+            else { continue }
+
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.categoryViewModel.moveCategory(
+                    from: IndexSet(integer: fromIndex),
+                    to: toIndex > fromIndex ? toIndex + 1 : toIndex
+                )
+            }
+            break
+        }
     }
 
     // MARK: - All Apps List
@@ -321,6 +409,9 @@ struct LauncherView: View {
             app: app,
             isPinned: viewModel.isAppPinned(app),
             canUninstall: viewModel.canUninstall(app),
+            showNewDot: app.isNew,
+            showUpdatedDot: app.isUpdated,
+            badgeCount: viewModel.badgeCount(for: app),
             onLaunch: { viewModel.launchApp(app) },
             onPin: { viewModel.pinApp(app) },
             onUnpin: { viewModel.unpinApp(app) },
@@ -350,5 +441,12 @@ struct LauncherView: View {
         } else {
             viewModel.onDismiss?()
         }
+    }
+}
+
+private struct CategoryFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }

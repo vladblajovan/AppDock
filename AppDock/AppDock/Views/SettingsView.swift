@@ -58,6 +58,32 @@ struct SettingsView: View {
                     set: { viewModel.setHideOnFocusLoss($0) }
                 ))
             }
+
+            Section("Notifications") {
+                Toggle("Show notification badges", isOn: Binding(
+                    get: { viewModel.showNotificationBadges },
+                    set: { viewModel.setShowNotificationBadges($0) }
+                ))
+
+                if viewModel.showNotificationBadges, let badge = viewModel.badgeService, !badge.isAccessibilityGranted {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                        Text("Accessibility permission required")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Open Settings") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+
+                Text("Shows notification badge counts from apps in your Dock. Requires Accessibility permission to read badge information.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

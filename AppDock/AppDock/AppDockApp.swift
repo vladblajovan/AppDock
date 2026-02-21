@@ -49,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }()
 
     private var launcherViewModel: LauncherViewModel!
+    private let badgeService = BadgeService()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
@@ -67,6 +68,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             launchService: launchService,
             modelContext: modelContext
         )
+
+        launcherViewModel.badgeService = badgeService
+
+        // Start badge polling if previously enabled
+        if SettingsHelper.getOrCreate(context: modelContext).showNotificationBadges {
+            badgeService.startPolling()
+        }
 
         launcherViewModel.onDismiss = { [weak self] in
             self?.windowManager.hidePanel()
@@ -119,6 +127,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let settingsVM = SettingsViewModel(modelContext: modelContainer.mainContext)
+        settingsVM.badgeService = badgeService
+        settingsVM.onShowNotificationBadgesChanged = { [weak self] enabled in
+            guard let self else { return }
+            if enabled {
+                self.badgeService.startPolling()
+            } else {
+                self.badgeService.stopPolling()
+            }
+        }
         settingsVM.onThemeChanged = { [weak self] theme in
             self?.applyTheme(theme)
         }

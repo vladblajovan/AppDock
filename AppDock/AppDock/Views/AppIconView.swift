@@ -13,6 +13,9 @@ struct AppIconView: View {
     var onCreateShortcut: (() -> Void)?
     var onUninstall: (() -> Void)?
     var showLabel: Bool?
+    var showNewDot: Bool = false
+    var showUpdatedDot: Bool = false
+    var badgeCount: Int = 0
 
     @AppStorage("showAppNames") private var showAppNames: Bool = true
     @State private var isHovered = false
@@ -27,6 +30,9 @@ struct AppIconView: View {
         isPinned: Bool = false,
         canUninstall: Bool = false,
         showLabel: Bool? = nil,
+        showNewDot: Bool = false,
+        showUpdatedDot: Bool = false,
+        badgeCount: Int = 0,
         onLaunch: @escaping () -> Void,
         onPin: (() -> Void)? = nil,
         onUnpin: (() -> Void)? = nil,
@@ -40,6 +46,9 @@ struct AppIconView: View {
         self.isPinned = isPinned
         self.canUninstall = canUninstall
         self.showLabel = showLabel
+        self.showNewDot = showNewDot
+        self.showUpdatedDot = showUpdatedDot
+        self.badgeCount = badgeCount
         self.onLaunch = onLaunch
         self.onPin = onPin
         self.onUnpin = onUnpin
@@ -51,10 +60,29 @@ struct AppIconView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Image(nsImage: IconExtractor.shared.icon(for: app.url, size: size))
+            Image(nsImage: IconExtractor.shared.icon(for: app.url, size: size, bundleIdentifier: app.bundleIdentifier))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
+                .overlay(alignment: .topTrailing) {
+                    if showNewDot {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 10, height: 10)
+                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
+                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
+                    } else if showUpdatedDot {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 10, height: 10)
+                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
+                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
+                    } else if badgeCount > 0 {
+                        BadgeLabelView(count: badgeCount)
+                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
+                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
+                    }
+                }
 
             if shouldShowName {
                 Text(app.name)

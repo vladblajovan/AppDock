@@ -8,6 +8,9 @@ final class AppPreference {
     var pinOrder: Int = 0
     var categoryOverride: String?
     var isHidden: Bool = false
+    var lastKnownVersion: String?
+    var isNewApp: Bool = false
+    var isUpdatedApp: Bool = false
 
     init(bundleIdentifier: String) {
         self.bundleIdentifier = bundleIdentifier
@@ -46,6 +49,9 @@ final class AppSettings {
     var lastPanelPositionX: Double?
     var lastPanelPositionY: Double?
     var lastPanelHeight: Double?
+    var hasPerformedInitialScan: Bool = false
+    var showNotificationBadges: Bool = false
+    var categoryOrder: String = ""
 
     init() {}
 

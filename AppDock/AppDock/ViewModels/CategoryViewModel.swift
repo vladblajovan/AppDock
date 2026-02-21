@@ -8,6 +8,14 @@ final class CategoryViewModel {
     }
     var expandedCategory: AppCategory? = nil
 
+    /// Custom category ordering. Empty = default allCases order.
+    var categoryOrder: [AppCategory] = [] {
+        didSet { invalidateCache() }
+    }
+
+    /// Callback fired when the user reorders categories via drag-and-drop.
+    var onCategoryOrderChanged: (([AppCategory]) -> Void)?
+
     // Cached sorted apps and preview apps per category
     private var sortedAppsCache: [AppCategory: [AppItem]] = [:]
     private var previewAppsCache: [AppCategory: [AppItem]] = [:]
@@ -15,7 +23,13 @@ final class CategoryViewModel {
 
     var nonEmptyCategories: [AppCategory] {
         if let cached = nonEmptyCategoriesCache { return cached }
-        let result = AppCategory.allCases.filter { categorizedApps[$0]?.isEmpty == false }
+        let order = categoryOrder.isEmpty ? Array(AppCategory.allCases) : categoryOrder
+        let nonEmpty = order.filter { categorizedApps[$0]?.isEmpty == false }
+        // Append any new categories not yet in the saved order
+        let remaining = AppCategory.allCases.filter { cat in
+            categorizedApps[cat]?.isEmpty == false && !nonEmpty.contains(cat)
+        }
+        let result = nonEmpty + remaining
         nonEmptyCategoriesCache = result
         return result
     }
@@ -46,6 +60,13 @@ final class CategoryViewModel {
         let preview = Array(appsForCategory(category).prefix(9))
         previewAppsCache[category] = preview
         return preview
+    }
+
+    func moveCategory(from source: IndexSet, to destination: Int) {
+        var current = nonEmptyCategories
+        current.move(fromOffsets: source, toOffset: destination)
+        categoryOrder = current
+        onCategoryOrderChanged?(current)
     }
 
     func moveApp(_ app: AppItem, to newCategory: AppCategory) {

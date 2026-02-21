@@ -4,6 +4,8 @@ struct CategoryGridView: View {
     let viewModel: CategoryViewModel
     let onLaunchApp: (AppItem) -> Void
     var onExpandCategory: ((AppCategory) -> Void)?
+    var hasNewOrUpdatedApps: ((AppCategory) -> Bool)?
+    var aggregateBadgeCount: ((AppCategory) -> Int)?
 
     private let columns = [
         GridItem(.adaptive(minimum: 180, maximum: 240), spacing: PlatformStyle.categoryGridSpacing)
@@ -15,7 +17,9 @@ struct CategoryGridView: View {
                 CategoryTileView(
                     category: category,
                     previewApps: viewModel.previewApps(for: category),
-                    appCount: viewModel.appsForCategory(category).count
+                    appCount: viewModel.appsForCategory(category).count,
+                    hasNewOrUpdatedApps: hasNewOrUpdatedApps?(category) ?? false,
+                    aggregateBadgeCount: aggregateBadgeCount?(category) ?? 0
                 ) {
                     viewModel.expandCategory(category)
                     onExpandCategory?(category)
@@ -29,6 +33,8 @@ struct CategoryTileView: View {
     let category: AppCategory
     let previewApps: [AppItem]
     let appCount: Int
+    var hasNewOrUpdatedApps: Bool = false
+    var aggregateBadgeCount: Int = 0
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -67,7 +73,7 @@ struct CategoryTileView: View {
                                         ForEach(0..<3, id: \.self) { col in
                                             let index = row * 3 + col
                                             if index < previewApps.count {
-                                                Image(nsImage: IconExtractor.shared.icon(for: previewApps[index].url, size: 56))
+                                                Image(nsImage: IconExtractor.shared.icon(for: previewApps[index].url, size: 56, bundleIdentifier: previewApps[index].bundleIdentifier))
                                                     .resizable()
                                                     .aspectRatio(1, contentMode: .fit)
                                                     .frame(width: iconSize, height: iconSize)
@@ -91,6 +97,12 @@ struct CategoryTileView: View {
             .clipShape(RoundedRectangle(cornerRadius: PlatformStyle.categoryTileCornerRadius))
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            if aggregateBadgeCount > 0 {
+                BadgeLabelView(count: aggregateBadgeCount)
+                    .offset(x: 11, y: -11)
+            }
+        }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering

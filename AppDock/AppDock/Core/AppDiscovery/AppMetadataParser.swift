@@ -7,6 +7,7 @@ struct AppMetadata: Sendable {
     let appStoreCategory: String?
     let isUIElement: Bool
     let isBackgroundOnly: Bool
+    let version: String?
 }
 
 struct AppMetadataParser {
@@ -32,13 +33,15 @@ struct AppMetadataParser {
 
         let isUIElement = (plist["LSUIElement"] as? Bool) ?? (plist["LSUIElement"] as? Int == 1)
         let isBackgroundOnly = (plist["LSBackgroundOnly"] as? Bool) ?? (plist["LSBackgroundOnly"] as? Int == 1)
+        let version = plist["CFBundleShortVersionString"] as? String
 
         return AppMetadata(
             displayName: displayName,
             bundleIdentifier: bundleIdentifier,
             appStoreCategory: appStoreCategory,
             isUIElement: isUIElement,
-            isBackgroundOnly: isBackgroundOnly
+            isBackgroundOnly: isBackgroundOnly,
+            version: version
         )
     }
 

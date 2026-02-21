@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchBarView: View {
     @Bindable var viewModel: SearchViewModel
     var showBackButton: Bool = false
+    var showFolderChip: Bool = true
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -28,7 +29,7 @@ struct SearchBarView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let folder = viewModel.activeFolder {
+            if showFolderChip, let folder = viewModel.activeFolder {
                 HStack(spacing: 5) {
                     Image(systemName: folder.sfSymbol)
                         .font(.system(size: 12))
@@ -46,7 +47,7 @@ struct SearchBarView: View {
                 )
             }
 
-            TextField(viewModel.activeFolder != nil ? "Search in folder..." : "Search apps...", text: $viewModel.query)
+            TextField(searchPlaceholder, text: $viewModel.query)
                 .font(PlatformStyle.searchFont)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
@@ -75,5 +76,12 @@ struct SearchBarView: View {
                 .fill(Color.primary.opacity(0.06))
         )
         .onAppear { isFocused = true }
+    }
+
+    private var searchPlaceholder: String {
+        if let folder = viewModel.activeFolder {
+            return showFolderChip ? "Search in folder..." : "Search in \(folder.rawValue)..."
+        }
+        return "Search apps..."
     }
 }

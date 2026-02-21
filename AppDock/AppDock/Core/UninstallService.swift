@@ -31,7 +31,7 @@ final class UninstallService {
         }
 
         do {
-            try await NSWorkspace.shared.recycle([app.url])
+            try FileManager.default.trashItem(at: app.url, resultingItemURL: nil)
             cleanupSwiftData(bundleID: app.bundleIdentifier)
             return .success(())
         } catch {

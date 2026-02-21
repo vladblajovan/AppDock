@@ -30,14 +30,34 @@ final class LauncherViewModel {
     private let launchService: LaunchService
     private let dockService: DockService
     private let uninstallService: UninstallService
+    private let appStateTracker: AppStateTracker
+    private let modelContext: ModelContext
+    var badgeService: BadgeService?
 
     init(appScanner: AppScanner, classifier: CategoryClassifier, launchService: LaunchService, modelContext: ModelContext) {
         self.appScanner = appScanner
         self.classifier = classifier
         self.launchService = launchService
+        self.modelContext = modelContext
         self.dockService = DockService()
         self.uninstallService = UninstallService(modelContext: modelContext)
+        self.appStateTracker = AppStateTracker(modelContext: modelContext)
         self.pinnedAppsViewModel = PinnedAppsViewModel(modelContext: modelContext)
+
+        // Load saved category order
+        let settings = SettingsHelper.getOrCreate(context: modelContext)
+        if !settings.categoryOrder.isEmpty {
+            let rawValues = settings.categoryOrder.components(separatedBy: ",")
+            categoryViewModel.categoryOrder = rawValues.compactMap { AppCategory(rawValue: $0) }
+        }
+
+        // Persist category order on change
+        categoryViewModel.onCategoryOrderChanged = { [weak self] order in
+            guard let self else { return }
+            let s = SettingsHelper.getOrCreate(context: self.modelContext)
+            s.categoryOrder = order.map(\.rawValue).joined(separator: ",")
+            try? self.modelContext.save()
+        }
 
         searchViewModel.onLaunch = { [weak self] app in
             self?.launchApp(app)
@@ -75,7 +95,19 @@ final class LauncherViewModel {
     }
 
     func launchApp(_ app: AppItem) {
+        appStateTracker.recordLaunch(of: app)
         launchService.launch(app)
+        // Clear dot state and propagate to all view models
+        if app.isNew || app.isUpdated {
+            if let index = allApps.firstIndex(where: { $0.bundleIdentifier == app.bundleIdentifier }) {
+                allApps[index].isNew = false
+                allApps[index].isUpdated = false
+            }
+            // Update child view models so dots disappear in category/search views
+            let grouped = Dictionary(grouping: allApps, by: \.category)
+            categoryViewModel.updateCategories(grouped)
+            searchViewModel.updateAppList(allApps)
+        }
         onDismiss?()
     }
 
@@ -144,17 +176,38 @@ final class LauncherViewModel {
         loadApps()
     }
 
+    // MARK: - Badge & Dot Helpers
+
+    func badgeCount(for app: AppItem) -> Int {
+        badgeService?.badgeCounts[app.bundleIdentifier] ?? 0
+    }
+
+    func badgeCount(for category: AppCategory) -> Int {
+        let apps = categoryViewModel.appsForCategory(category)
+        return apps.reduce(0) { $0 + badgeCount(for: $1) }
+    }
+
+    func hasNewOrUpdatedApps(in category: AppCategory) -> Bool {
+        categoryViewModel.appsForCategory(category).contains { $0.isNew || $0.isUpdated }
+    }
+
+    func newOrUpdatedBundleIDs(in category: AppCategory) -> Set<String> {
+        Set(categoryViewModel.appsForCategory(category)
+            .filter { $0.isNew || $0.isUpdated }
+            .map(\.bundleIdentifier))
+    }
+
     // MARK: - Private
 
     private func loadApps() {
         let scanned = appScanner.scan()
         let classified = classifier.classify(scanned)
-        allApps = classified
+        allApps = appStateTracker.annotate(classified)
 
-        searchViewModel.updateAppList(classified)
-        pinnedAppsViewModel.loadPinnedApps(from: classified)
+        searchViewModel.updateAppList(allApps)
+        pinnedAppsViewModel.loadPinnedApps(from: allApps)
 
-        let grouped = Dictionary(grouping: classified, by: \.category)
+        let grouped = Dictionary(grouping: allApps, by: \.category)
         categoryViewModel.updateCategories(grouped)
         isLoading = false
     }

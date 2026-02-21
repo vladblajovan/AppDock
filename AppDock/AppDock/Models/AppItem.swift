@@ -8,6 +8,9 @@ struct AppItem: Identifiable, Hashable, Sendable {
     let appStoreCategory: String?
     var category: AppCategory
     let isSystemApp: Bool
+    var version: String?
+    var isNew: Bool = false
+    var isUpdated: Bool = false
 
     var bundleIdentifierPrefix: String {
         let components = bundleIdentifier.split(separator: ".")

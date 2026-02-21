@@ -64,7 +64,8 @@ final class AppScanner {
                     url: resolvedURL,
                     appStoreCategory: metadata.appStoreCategory,
                     category: .other,  // Will be classified later
-                    isSystemApp: isSystem
+                    isSystemApp: isSystem,
+                    version: metadata.version
                 )
                 apps[metadata.bundleIdentifier] = app
             }

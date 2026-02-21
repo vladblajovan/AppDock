@@ -16,7 +16,6 @@ struct PinnedAppsRow: View {
             Text("Pinned")
                 .font(PlatformStyle.sectionHeaderFont)
                 .foregroundStyle(.secondary)
-                .padding(.top, -16)
 
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(viewModel.pinnedApps) { app in

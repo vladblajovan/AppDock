@@ -18,7 +18,7 @@ struct CategoryDetailView<Icon: View>: View {
                     }
                 }
                 .padding(.top, 14)
-                .padding(.bottom, 14)
+                .padding(.bottom, PlatformStyle.panelPadding)
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .clipped()
