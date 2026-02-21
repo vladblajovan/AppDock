@@ -40,3 +40,5 @@ plans/
 # Local build config (contains developer identity)
 AppDock/Config/Local.xcconfig
 !AppDock/Config/Local.xcconfig.example
+AppDock/Config/Dev.xcconfig
+!AppDock/Config/Dev.xcconfig.example

@@ -45,6 +45,7 @@ struct PlatformStyle {
     // MARK: - Typography
 
     static var sectionHeaderFont: Font { .system(size: 18, weight: .semibold) }
+    static var subsectionHeaderFont: Font { .system(size: 14, weight: .semibold) }
     static var appLabelFont: Font { .system(size: 12) }
     static var searchFont: Font { .system(size: 18) }
 

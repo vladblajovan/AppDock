@@ -146,8 +146,12 @@ struct LauncherView: View {
                     if !viewModel.pinnedAppsViewModel.isEmpty {
                         PinnedAppsRow(
                             viewModel: viewModel.pinnedAppsViewModel,
-                            onLaunchApp: { app in viewModel.launchApp(app) }
+                            onLaunchApp: { app in viewModel.launchApp(app) },
+                            extraHorizontalPadding: viewModel.viewMode == .folders ? PlatformStyle.tilePaddingH / 2 - 4 : 0,
+                            gridColumns: viewModel.viewMode == .list ? listColumns : nil,
+                            gridSpacing: viewModel.viewMode == .list ? PlatformStyle.iconGridSpacing : nil
                         )
+                        Divider()
                     }
 
                     if viewModel.viewMode == .folders {

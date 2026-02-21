@@ -17,7 +17,7 @@ struct SettingsView: View {
                     .tabItem { Label("AI", systemImage: "brain") }
             }
         }
-        .frame(width: 450, height: 300)
+        .frame(width: 450, height: 420)
     }
 
     // MARK: - General Tab
@@ -47,6 +47,10 @@ struct SettingsView: View {
                     get: { viewModel.showSuggestions },
                     set: { viewModel.setShowSuggestions($0) }
                 ))
+                .disabled(true)
+                Text("Coming soon")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
 
                 Toggle("Launch at Login", isOn: Binding(
                     get: { viewModel.launchAtLogin },
@@ -83,6 +87,15 @@ struct SettingsView: View {
                 Text("Shows notification badge counts from apps in your Dock. Requires Accessibility permission to read badge information.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(Bundle.main.appVersionString)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -130,10 +143,11 @@ struct SettingsView: View {
     private var aiTab: some View {
         Form {
             Section("On-Device Classification") {
-                Toggle("Use AI for app categorization", isOn: Binding(
-                    get: { viewModel.useLLMClassification },
-                    set: { viewModel.setUseLLMClassification($0) }
-                ))
+                Toggle("Use AI for app categorization", isOn: .constant(false))
+                .disabled(true)
+                Text("Coming soon")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
 
                 Text("Uses Apple's on-device language model to classify apps that can't be categorized by metadata alone. No data leaves your Mac.")
                     .font(.caption)

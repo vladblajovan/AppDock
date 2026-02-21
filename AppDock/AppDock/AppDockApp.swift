@@ -29,6 +29,11 @@ struct AppDockApp: App {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q")
+
+            Divider()
+
+            Text("Version \(Bundle.main.appVersionString)")
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -40,12 +45,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
 
     let modelContainer: ModelContainer = {
-        return try! ModelContainer(for:
+        let schema = Schema([
             UsageRecord.self,
             AppPreference.self,
             LLMClassificationCache.self,
             AppSettings.self
-        )
+        ])
+        #if DEBUG
+        let config = ModelConfiguration("AppDockDev", schema: schema)
+        #else
+        let config = ModelConfiguration(schema: schema)
+        #endif
+        return try! ModelContainer(for: schema, configurations: [config])
     }()
 
     private var launcherViewModel: LauncherViewModel!
@@ -266,6 +277,14 @@ struct DynamicHotkeyModifier: ViewModifier {
             guard let char = str.first else { return nil }
             return KeyEquivalent(char)
         }
+    }
+}
+
+extension Bundle {
+    var appVersionString: String {
+        let version = infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
     }
 }
 

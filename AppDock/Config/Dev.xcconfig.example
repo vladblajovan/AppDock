@@ -1,0 +1,7 @@
+// Development build configuration — copy this file to Dev.xcconfig.
+// Inherits from Local.xcconfig and adds a .dev suffix to the bundle identifier.
+
+#include "Local.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(inherited).dev
+PRODUCT_NAME = AppDock - Dev

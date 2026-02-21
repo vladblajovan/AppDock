@@ -3,21 +3,25 @@ import SwiftUI
 struct PinnedAppsRow: View {
     let viewModel: PinnedAppsViewModel
     let onLaunchApp: (AppItem) -> Void
+    var extraHorizontalPadding: CGFloat = 0
+    var gridColumns: [GridItem]?
+    var gridSpacing: CGFloat?
 
     @AppStorage("showPinnedAppNames") private var showPinnedAppNames: Bool = false
     @State private var draggingApp: AppItem?
     @State private var dragOffset: CGSize = .zero
     @State private var itemFrames: [String: CGRect] = [:]
 
-    private let columns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 4), spacing: 4)]
+    private static let defaultColumns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 4), spacing: 4)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Pinned")
-                .font(PlatformStyle.sectionHeaderFont)
+                .font(PlatformStyle.subsectionHeaderFont)
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, extraHorizontalPadding)
 
-            LazyVGrid(columns: columns, spacing: 4) {
+            LazyVGrid(columns: gridColumns ?? Self.defaultColumns, spacing: gridSpacing ?? 4) {
                 ForEach(viewModel.pinnedApps) { app in
                     AppIconView(
                         app: app,
@@ -68,6 +72,7 @@ struct PinnedAppsRow: View {
             .onPreferenceChange(FramePreferenceKey.self) { frames in
                 itemFrames = frames
             }
+            .padding(.horizontal, extraHorizontalPadding)
         }
     }
 
