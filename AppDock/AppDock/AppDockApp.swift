@@ -43,8 +43,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let windowManager = WindowManager()
     let hotkeyManager = HotkeyManager()
     private var settingsWindow: NSWindow?
-    private nonisolated(unsafe) var mouseBackMonitor: Any?
-    private nonisolated(unsafe) var swipeBackMonitor: Any?
 
     let modelContainer: ModelContainer = {
         let schema = Schema([
@@ -92,15 +90,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherViewModel.onDismiss = { [weak self] in
             self?.windowManager.hidePanel()
         }
-        // Reinstall mouse-back / swipe monitors each time the panel shows,
-        // and tear them down when it hides. Local monitors can become stale
-        // when the panel's nonactivating style causes the app to lose focus.
-        windowManager.onVisibilityChanged = { [weak self] visible in
-            guard let self else { return }
-            self.removeMouseBackMonitors()
-            if visible {
-                self.installMouseBackMonitors()
-            }
+        // Mouse back button is handled via sendEvent override on KeyablePanel,
+        // which intercepts events at the window level — no permissions needed
+        // and can never become stale.
+        windowManager.onMouseBack = { [weak self] in
+            self?.launcherViewModel.handleMouseBack()
         }
         launcherViewModel.onShowSettings = { [weak self] in
             self?.showSettings()
@@ -220,33 +214,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyManager.stop()
-        removeMouseBackMonitors()
-    }
-
-    private func installMouseBackMonitors() {
-        mouseBackMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
-            guard let self else { return event }
-            if event.buttonNumber == 3, self.windowManager.isVisible {
-                self.launcherViewModel.handleMouseBack()
-                return nil
-            }
-            return event
-        }
-        swipeBackMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) { [weak self] event in
-            guard let self else { return event }
-            if event.deltaX > 0, self.windowManager.isVisible {
-                self.launcherViewModel.handleMouseBack()
-                return nil
-            }
-            return event
-        }
-    }
-
-    private func removeMouseBackMonitors() {
-        if let mouseBackMonitor { NSEvent.removeMonitor(mouseBackMonitor) }
-        mouseBackMonitor = nil
-        if let swipeBackMonitor { NSEvent.removeMonitor(swipeBackMonitor) }
-        swipeBackMonitor = nil
     }
 }
 

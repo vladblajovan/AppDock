@@ -39,7 +39,7 @@ struct LauncherView: View {
         if viewModel.viewMode == .list {
             return Self.adaptiveColumns(width: gridContentWidth, minimum: 100, spacing: PlatformStyle.iconGridSpacing)
         }
-        return Self.adaptiveColumns(width: gridContentWidth, minimum: PlatformStyle.appIconSize + 4, spacing: 4)
+        return Self.adaptiveColumns(width: gridContentWidth, minimum: PlatformStyle.appIconSize + 20, spacing: PlatformStyle.iconGridSpacing)
     }
 
     var body: some View {
@@ -148,6 +148,10 @@ struct LauncherView: View {
             guard press.modifiers.contains(.command) else { return .ignored }
             return launchPinnedApp(for: press)
         }
+        .onKeyPress(.tab) {
+            setViewMode(viewModel.viewMode == .folders ? .list : .folders)
+            return .handled
+        }
         // Uninstall confirmation
         .alert(
             "Uninstall \"\(viewModel.appPendingUninstall?.name ?? "")\"?",
@@ -252,13 +256,15 @@ struct LauncherView: View {
                 .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
                 .clipped()
                 .onChange(of: viewModel.highlightedItemIndex) { _, newIndex in
-                    guard let idx = newIndex else { return }
-                    let scrollID = viewModel.highlightedSection == .pinned ? "pinned-\(idx)" : "main-\(idx)"
+                    guard let idx = newIndex,
+                          let scrollID = scrollIDForHighlight(section: viewModel.highlightedSection, index: idx)
+                    else { return }
                     scrollProxy.scrollTo(scrollID)
                 }
                 .onChange(of: viewModel.highlightedSection) { _, newSection in
-                    guard let idx = viewModel.highlightedItemIndex else { return }
-                    let scrollID = newSection == .pinned ? "pinned-\(idx)" : "main-\(idx)"
+                    guard let idx = viewModel.highlightedItemIndex,
+                          let scrollID = scrollIDForHighlight(section: newSection, index: idx)
+                    else { return }
                     scrollProxy.scrollTo(scrollID)
                 }
             }
@@ -288,6 +294,10 @@ struct LauncherView: View {
         viewModel.highlightedItemIndex = nil
         if newMode == .folders {
             viewModel.selectedListCategory = nil
+            viewModel.searchViewModel.clearActiveFolder()
+        } else {
+            // Collapse any expanded folder so list mode is shown immediately
+            viewModel.categoryViewModel.collapseCategory()
             viewModel.searchViewModel.clearActiveFolder()
         }
     }
@@ -384,8 +394,8 @@ struct LauncherView: View {
                 value: [category.rawValue: geo.frame(in: .named("categoryCarousel"))]
             )
         })
-        .gesture(
-            LongPressGesture(minimumDuration: 0.25)
+        .highPriorityGesture(
+            LongPressGesture(minimumDuration: 0.2)
                 .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("categoryCarousel")))
                 .onChanged { value in
                     switch value {
@@ -512,6 +522,37 @@ struct LauncherView: View {
     }
 
     // MARK: - Helpers
+
+    /// Maps a highlighted section + index to the `.id()` value used on the corresponding view.
+    private func scrollIDForHighlight(section: BrowseSection, index: Int) -> String? {
+        switch section {
+        case .pinned:
+            let pinned = viewModel.pinnedAppsViewModel.pinnedApps
+            guard index < pinned.count else { return nil }
+            return "pinned-\(pinned[index].bundleIdentifier)"
+        case .main:
+            if viewModel.viewMode == .folders {
+                if let expanded = viewModel.categoryViewModel.expandedCategory {
+                    let apps = viewModel.categoryViewModel.appsForCategory(expanded)
+                    guard index < apps.count else { return nil }
+                    return apps[index].bundleIdentifier
+                } else {
+                    let categories = viewModel.categoryViewModel.nonEmptyCategories
+                    guard index < categories.count else { return nil }
+                    return categories[index].rawValue
+                }
+            } else {
+                let mainApps = viewModel.allAppsSorted
+                if index < mainApps.count {
+                    return "main-\(mainApps[index].bundleIdentifier)"
+                }
+                let otherIndex = index - mainApps.count
+                let others = viewModel.otherAppsSorted
+                guard otherIndex < others.count else { return nil }
+                return "other-\(others[otherIndex].bundleIdentifier)"
+            }
+        }
+    }
 
     private func appIcon(for app: AppItem, isHighlighted: Bool = false) -> some View {
         AppIconView(

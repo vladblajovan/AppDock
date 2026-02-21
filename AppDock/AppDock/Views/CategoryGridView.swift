@@ -30,7 +30,7 @@ struct CategoryGridView: View {
                     viewModel.expandCategory(category)
                     onExpandCategory?(category)
                 }
-                .id("main-\(index)")
+                .id(category.rawValue)
             }
         }
     }

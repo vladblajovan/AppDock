@@ -16,7 +16,7 @@ struct PinnedAppsRow: View {
     @State private var dragBaseOffset: CGSize = .zero
     @State private var itemFrames: [String: CGRect] = [:]
 
-    private static let defaultColumns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 4), spacing: 4)]
+    private static let defaultColumns = [GridItem(.adaptive(minimum: PlatformStyle.appIconSize + 20), spacing: PlatformStyle.iconGridSpacing)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -25,7 +25,7 @@ struct PinnedAppsRow: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, extraHorizontalPadding)
 
-            LazyVGrid(columns: gridColumns ?? Self.defaultColumns, spacing: gridSpacing ?? 4) {
+            LazyVGrid(columns: gridColumns ?? Self.defaultColumns, spacing: gridSpacing ?? PlatformStyle.iconGridSpacing) {
                 ForEach(Array(viewModel.pinnedApps.enumerated()), id: \.element.id) { index, app in
                     AppIconView(
                         app: app,
@@ -42,7 +42,7 @@ struct PinnedAppsRow: View {
                     .fixedSize(horizontal: draggingApp == app, vertical: false)
                     .offset(draggingApp == app ? dragOffset : .zero)
                     .zIndex(draggingApp == app ? 1 : 0)
-                    .id("pinned-\(index)")
+                    .id("pinned-\(app.bundleIdentifier)")
                     .background(GeometryReader { geo in
                         Color.clear.preference(
                             key: FramePreferenceKey.self,

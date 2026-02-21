@@ -8,6 +8,7 @@ final class WindowManager {
     private(set) var isVisible = false
     private var lastHideTime: Date = .distantPast
     var theme: AppTheme = .system
+    var onMouseBack: (() -> Void)?
     var hideOnFocusLoss: Bool = true {
         didSet {
             if isVisible {
@@ -19,8 +20,6 @@ final class WindowManager {
             }
         }
     }
-    var onVisibilityChanged: ((Bool) -> Void)?
-
     func togglePanel() {
         if isVisible {
             hidePanel()
@@ -74,7 +73,6 @@ final class WindowManager {
         if hideOnFocusLoss {
             startClickOutsideMonitor()
         }
-        onVisibilityChanged?(true)
     }
 
     func hidePanel() {
@@ -83,7 +81,6 @@ final class WindowManager {
         isVisible = false
         lastHideTime = Date()
         stopClickOutsideMonitor()
-        onVisibilityChanged?(false)
         panel.alphaValue = 0
         panel.orderOut(nil)
     }
@@ -194,6 +191,9 @@ final class WindowManager {
         panel.animationBehavior = .utilityWindow
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
+        panel.onMouseBack = { [weak self] in
+            self?.onMouseBack?()
+        }
         panel.minSize = NSSize(width: PlatformStyle.panelMinWidth, height: 400)
         panel.maxSize = NSSize(width: PlatformStyle.panelMaxWidth, height: 1200)
         let heightKey = Self.panelHeightKey
@@ -233,9 +233,23 @@ final class WindowManager {
 final class KeyablePanel: NSPanel {
     var onResize: ((NSSize) -> Void)?
     var suppressFrameSave = false
+    /// Called when the mouse back button (button 3) or a right-to-left swipe is detected.
+    var onMouseBack: (() -> Void)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .otherMouseDown, event.buttonNumber == 3 {
+            onMouseBack?()
+            return
+        }
+        if event.type == .swipe, event.deltaX > 0 {
+            onMouseBack?()
+            return
+        }
+        super.sendEvent(event)
+    }
 
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)
