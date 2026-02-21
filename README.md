@@ -20,12 +20,14 @@ AppDock lives in your menu bar and gives you instant access to all your apps —
 - Multi-layer classification: bundle metadata, 200+ known app mappings, name-based heuristics, and optional on-device LLM (macOS 26)
 
 ### Dual View Modes
-- **Folders** — Apps grouped into color-coded category folders with 3x3 icon previews. Tap to expand.
+- **Folders** — Apps grouped into color-coded category folders with 3×3 icon previews. Tap to expand.
 - **List** — Alphabetical grid with a category carousel for quick filtering.
+- Drag-and-drop category reordering in the carousel, persisted across launches
 
 ### Powerful Search
 - Fuzzy matching with typo tolerance
 - Abbreviation support (e.g., "vsc" finds Visual Studio Code)
+- Context-aware placeholders — shows the active category name when filtering
 - Category-scoped search when a folder or filter is active
 - Full keyboard navigation with arrow keys
 
@@ -34,16 +36,23 @@ AppDock lives in your menu bar and gives you instant access to all your apps —
 - Drag to reorder
 - Persistent across sessions
 
+### Notification Badges & App State
+- Badge counts from running apps displayed on category tiles and app icons
+- New and recently updated apps highlighted with indicator dots
+- Badge polling toggle in Settings
+
 ### Global Hotkey
 - Configure any key combination to toggle AppDock
 - Recorder UI in Settings — just press your preferred shortcut
 - Displayed in the menu bar and search bar
+- Auto-hide panel on app launch
 
 ### Deep macOS Integration
 - Add apps to the Dock
 - Create desktop shortcuts
 - Uninstall apps (move to Trash)
 - Reassign apps to different categories
+- Mouse back button navigation support
 
 ### Adaptive UI
 - **macOS 26 (Tahoe):** Liquid Glass materials that sample your wallpaper in real-time
