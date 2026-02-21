@@ -6,6 +6,11 @@ enum AppViewMode: String, CaseIterable {
     case list = "List"
 }
 
+enum BrowseSection {
+    case pinned
+    case main
+}
+
 @MainActor
 @Observable
 final class LauncherViewModel {
@@ -18,6 +23,11 @@ final class LauncherViewModel {
     var uninstallError: String? = nil
     var onDismiss: (() -> Void)?
     var onShowSettings: (() -> Void)?
+
+    // MARK: - Browse Keyboard Navigation
+    var highlightedSection: BrowseSection = .main
+    var highlightedItemIndex: Int? = nil
+    var isKeyboardNavigating: Bool = false
 
     // MARK: - Child ViewModels
     let searchViewModel = SearchViewModel()
@@ -83,6 +93,120 @@ final class LauncherViewModel {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    var currentBrowseItemCount: Int {
+        if viewMode == .folders {
+            if categoryViewModel.expandedCategory != nil {
+                return categoryViewModel.appsForCategory(categoryViewModel.expandedCategory!).count
+            } else {
+                return categoryViewModel.nonEmptyCategories.count
+            }
+        } else {
+            // List mode
+            let mainCount = allAppsSorted.count
+            if selectedListCategory == nil {
+                return mainCount + otherAppsSorted.count
+            }
+            return mainCount
+        }
+    }
+
+    /// Whether the pinned row is visible in the current state.
+    var isPinnedRowVisible: Bool {
+        !pinnedAppsViewModel.isEmpty
+            && categoryViewModel.expandedCategory == nil
+            && !(viewMode == .list && selectedListCategory != nil)
+    }
+
+    func moveHighlightInBrowse(_ direction: NavigationDirection, columnsPerRow: Int, pinnedColumnsPerRow: Int) {
+        guard let current = highlightedItemIndex else {
+            // First press: activate highlight at top-left of the appropriate section
+            if isPinnedRowVisible {
+                highlightedSection = .pinned
+                highlightedItemIndex = 0
+            } else {
+                highlightedSection = .main
+                highlightedItemIndex = 0
+            }
+            return
+        }
+
+        let count: Int
+        switch highlightedSection {
+        case .pinned:
+            count = pinnedAppsViewModel.pinnedApps.count
+        case .main:
+            count = currentBrowseItemCount
+        }
+
+        switch direction {
+        case .right:
+            highlightedItemIndex = min(current + 1, count - 1)
+        case .left:
+            highlightedItemIndex = max(current - 1, 0)
+        case .down:
+            if highlightedSection == .pinned {
+                // Move from pinned → main section
+                highlightedSection = .main
+                highlightedItemIndex = 0
+            } else {
+                let next = current + columnsPerRow
+                if next < count { highlightedItemIndex = next }
+            }
+        case .up:
+            if highlightedSection == .main {
+                let prev = current - columnsPerRow
+                if prev >= 0 {
+                    highlightedItemIndex = prev
+                } else if isPinnedRowVisible {
+                    // Move from main → pinned section
+                    highlightedSection = .pinned
+                    highlightedItemIndex = 0
+                }
+            } else {
+                let prev = current - pinnedColumnsPerRow
+                if prev >= 0 { highlightedItemIndex = prev }
+            }
+        }
+    }
+
+    func activateHighlightedItem() {
+        guard let index = highlightedItemIndex else { return }
+
+        if highlightedSection == .pinned {
+            let pinned = pinnedAppsViewModel.pinnedApps
+            guard index < pinned.count else { return }
+            launchApp(pinned[index])
+            return
+        }
+
+        if viewMode == .folders {
+            if let expanded = categoryViewModel.expandedCategory {
+                let apps = categoryViewModel.appsForCategory(expanded)
+                guard index < apps.count else { return }
+                launchApp(apps[index])
+            } else {
+                let categories = categoryViewModel.nonEmptyCategories
+                guard index < categories.count else { return }
+                let category = categories[index]
+                categoryViewModel.expandCategory(category)
+                let apps = categoryViewModel.appsForCategory(category)
+                searchViewModel.setActiveFolder(category, apps: apps)
+                highlightedItemIndex = nil
+            }
+        } else {
+            // List mode: main apps then other apps
+            let mainApps = allAppsSorted
+            if index < mainApps.count {
+                launchApp(mainApps[index])
+            } else if selectedListCategory == nil {
+                let otherIndex = index - mainApps.count
+                let others = otherAppsSorted
+                guard otherIndex < others.count else { return }
+                launchApp(others[otherIndex])
+            }
+        }
+    }
+
     // MARK: - Actions
 
     func onAppear() {
@@ -111,6 +235,19 @@ final class LauncherViewModel {
         onDismiss?()
     }
 
+    func handleMouseBack() {
+        if searchViewModel.isActive {
+            searchViewModel.clearSearch()
+        } else if categoryViewModel.expandedCategory != nil {
+            categoryViewModel.collapseCategory()
+            searchViewModel.clearActiveFolder()
+        } else if selectedListCategory != nil {
+            selectedListCategory = nil
+            searchViewModel.clearActiveFolder()
+        }
+        highlightedItemIndex = nil
+    }
+
     func pinApp(_ app: AppItem) {
         pinnedAppsViewModel.pinApp(app)
     }
@@ -125,6 +262,30 @@ final class LauncherViewModel {
 
     func moveAppToCategory(_ app: AppItem, category: AppCategory) {
         categoryViewModel.moveApp(app, to: category)
+        // Sync the category change back into allApps so list mode reflects it immediately.
+        // Replace the whole array to ensure @Observable triggers a view update.
+        var updated = allApps
+        if let index = updated.firstIndex(where: { $0.bundleIdentifier == app.bundleIdentifier }) {
+            updated[index].category = category
+        }
+        allApps = updated
+        searchViewModel.updateAppList(allApps)
+
+        // Persist the category override so it survives app restarts and rescans
+        let bundleID = app.bundleIdentifier
+        var descriptor = FetchDescriptor<AppPreference>(
+            predicate: #Predicate { $0.bundleIdentifier == bundleID }
+        )
+        descriptor.fetchLimit = 1
+        let pref: AppPreference
+        if let existing = try? modelContext.fetch(descriptor).first {
+            pref = existing
+        } else {
+            pref = AppPreference(bundleIdentifier: bundleID)
+            modelContext.insert(pref)
+        }
+        pref.categoryOverride = category.rawValue
+        try? modelContext.save()
     }
 
     // MARK: - Dock & Desktop

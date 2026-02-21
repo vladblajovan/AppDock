@@ -6,11 +6,41 @@ struct LauncherView: View {
     // Category carousel drag state
     @State private var draggingCategory: AppCategory?
     @State private var categoryDragOffset: CGSize = .zero
+    @State private var categoryDragBaseOffset: CGSize = .zero
     @State private var chipFrames: [String: CGRect] = [:]
+
+    /// Measured width of the grid content area (inside horizontal padding).
+    @State private var gridContentWidth: CGFloat = 0
+
+    /// Whether the cursor is hidden due to keyboard navigation.
+    @State private var isCursorHidden = false
+    @State private var mouseMoveMonitor: Any?
 
     private let searchResultColumns = [
         GridItem(.adaptive(minimum: 88, maximum: 110), spacing: PlatformStyle.iconGridSpacing)
     ]
+
+    /// Compute how many columns fit for an adaptive grid given the measured width.
+    private static func adaptiveColumns(width: CGFloat, minimum: CGFloat, spacing: CGFloat) -> Int {
+        guard width > 0 else { return 1 }
+        return max(1, Int((width + spacing) / (minimum + spacing)))
+    }
+
+    /// Actual columns per row for the current main content grid.
+    private var currentColumnsPerRow: Int {
+        if viewModel.viewMode == .folders && viewModel.categoryViewModel.expandedCategory == nil {
+            return Self.adaptiveColumns(width: gridContentWidth, minimum: 180, spacing: PlatformStyle.categoryGridSpacing)
+        }
+        return Self.adaptiveColumns(width: gridContentWidth, minimum: 100, spacing: PlatformStyle.iconGridSpacing)
+    }
+
+    /// Actual columns per row for the pinned apps grid.
+    private var pinnedColumnsPerRow: Int {
+        if viewModel.viewMode == .list {
+            return Self.adaptiveColumns(width: gridContentWidth, minimum: 100, spacing: PlatformStyle.iconGridSpacing)
+        }
+        return Self.adaptiveColumns(width: gridContentWidth, minimum: PlatformStyle.appIconSize + 4, spacing: 4)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,7 +76,8 @@ struct LauncherView: View {
                 CategoryDetailView(
                     category: expanded,
                     apps: viewModel.categoryViewModel.appsForCategory(expanded),
-                    appIconBuilder: { app in appIcon(for: app) }
+                    appIconBuilder: { app, highlighted in appIcon(for: app, isHighlighted: highlighted) },
+                    highlightedIndex: viewModel.highlightedSection == .main ? viewModel.highlightedItemIndex : nil
                 )
                 .padding(.horizontal, PlatformStyle.panelPadding)
                 .padding(.bottom, PlatformStyle.panelPadding)
@@ -56,27 +87,66 @@ struct LauncherView: View {
         }
         .frame(minWidth: PlatformStyle.panelMinWidth, maxWidth: PlatformStyle.panelMaxWidth, minHeight: 400, maxHeight: .infinity)
         .adaptiveGlassBackground()
-        .onMouseBackButton { handleMouseBack() }
+        .background(GeometryReader { geo in
+            Color.clear.onAppear {
+                gridContentWidth = geo.size.width - PlatformStyle.panelPadding * 2
+            }
+            .onChange(of: geo.size.width) { _, newWidth in
+                gridContentWidth = newWidth - PlatformStyle.panelPadding * 2
+            }
+        })
         .onAppear { viewModel.onAppear() }
+        .onDisappear { showCursorIfNeeded() }
         .onKeyPress(.escape) {
             handleEscape()
             return .handled
         }
         .onKeyPress(.upArrow) {
-            viewModel.searchViewModel.moveHighlight(.up)
+            hideCursorForKeyboardNav()
+            if viewModel.searchViewModel.isActive {
+                viewModel.searchViewModel.moveHighlight(.up)
+            } else {
+                viewModel.moveHighlightInBrowse(.up, columnsPerRow: currentColumnsPerRow, pinnedColumnsPerRow: pinnedColumnsPerRow)
+            }
             return .handled
         }
         .onKeyPress(.downArrow) {
-            viewModel.searchViewModel.moveHighlight(.down)
+            hideCursorForKeyboardNav()
+            if viewModel.searchViewModel.isActive {
+                viewModel.searchViewModel.moveHighlight(.down)
+            } else {
+                viewModel.moveHighlightInBrowse(.down, columnsPerRow: currentColumnsPerRow, pinnedColumnsPerRow: pinnedColumnsPerRow)
+            }
             return .handled
         }
         .onKeyPress(.leftArrow) {
-            viewModel.searchViewModel.moveHighlight(.left)
+            hideCursorForKeyboardNav()
+            if viewModel.searchViewModel.isActive {
+                viewModel.searchViewModel.moveHighlight(.left)
+            } else {
+                viewModel.moveHighlightInBrowse(.left, columnsPerRow: currentColumnsPerRow, pinnedColumnsPerRow: pinnedColumnsPerRow)
+            }
             return .handled
         }
         .onKeyPress(.rightArrow) {
-            viewModel.searchViewModel.moveHighlight(.right)
+            hideCursorForKeyboardNav()
+            if viewModel.searchViewModel.isActive {
+                viewModel.searchViewModel.moveHighlight(.right)
+            } else {
+                viewModel.moveHighlightInBrowse(.right, columnsPerRow: currentColumnsPerRow, pinnedColumnsPerRow: pinnedColumnsPerRow)
+            }
             return .handled
+        }
+        .onKeyPress(.return) {
+            if !viewModel.searchViewModel.isActive, viewModel.highlightedItemIndex != nil {
+                viewModel.activateHighlightedItem()
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(characters: .decimalDigits) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            return launchPinnedApp(for: press)
         }
         // Uninstall confirmation
         .alert(
@@ -113,13 +183,7 @@ struct LauncherView: View {
         ScrollView(.vertical) {
             LazyVGrid(columns: searchResultColumns, spacing: PlatformStyle.iconGridSpacing) {
                 ForEach(Array(viewModel.searchViewModel.results.enumerated()), id: \.element.app.id) { index, result in
-                    appIcon(for: result.app)
-                        .background(
-                            RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)
-                                .fill(index == viewModel.searchViewModel.highlightedIndex
-                                      ? Color.accentColor.opacity(0.15)
-                                      : Color.clear)
-                        )
+                    appIcon(for: result.app, isHighlighted: index == viewModel.searchViewModel.highlightedIndex)
                 }
             }
             .padding(.horizontal, PlatformStyle.panelPadding)
@@ -140,42 +204,64 @@ struct LauncherView: View {
                     .padding(.top, 4)
             }
 
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
-                    // Pinned apps
-                    if !viewModel.pinnedAppsViewModel.isEmpty {
-                        PinnedAppsRow(
-                            viewModel: viewModel.pinnedAppsViewModel,
-                            onLaunchApp: { app in viewModel.launchApp(app) },
-                            extraHorizontalPadding: viewModel.viewMode == .folders ? PlatformStyle.tilePaddingH / 2 - 4 : 0,
-                            gridColumns: viewModel.viewMode == .list ? listColumns : nil,
-                            gridSpacing: viewModel.viewMode == .list ? PlatformStyle.iconGridSpacing : nil
-                        )
-                        Divider()
-                    }
+            ScrollViewReader { scrollProxy in
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
+                        // Pinned apps (hidden in list mode when a category is selected)
+                        if !viewModel.pinnedAppsViewModel.isEmpty && !(viewModel.viewMode == .list && viewModel.selectedListCategory != nil) {
+                            PinnedAppsRow(
+                                viewModel: viewModel.pinnedAppsViewModel,
+                                onLaunchApp: { app in viewModel.launchApp(app) },
+                                extraHorizontalPadding: viewModel.viewMode == .folders ? PlatformStyle.tilePaddingH / 2 - 4 : 0,
+                                gridColumns: viewModel.viewMode == .list ? listColumns : nil,
+                                gridSpacing: viewModel.viewMode == .list ? PlatformStyle.iconGridSpacing : nil,
+                                highlightedIndex: viewModel.highlightedSection == .pinned ? viewModel.highlightedItemIndex : nil,
+                                suppressHover: viewModel.isKeyboardNavigating,
+                                onHoverChanged: { hovering in
+                                    if hovering && !viewModel.isKeyboardNavigating { viewModel.highlightedItemIndex = nil }
+                                }
+                            )
+                            Divider()
+                        }
 
-                    if viewModel.viewMode == .folders {
-                        CategoryGridView(
-                            viewModel: viewModel.categoryViewModel,
-                            onLaunchApp: { app in viewModel.launchApp(app) },
-                            onExpandCategory: { category in
-                                let apps = viewModel.categoryViewModel.appsForCategory(category)
-                                viewModel.searchViewModel.setActiveFolder(category, apps: apps)
-                            },
-                            hasNewOrUpdatedApps: { viewModel.hasNewOrUpdatedApps(in: $0) },
-                            aggregateBadgeCount: { viewModel.badgeCount(for: $0) }
-                        )
-                        .padding(.top, 14)
-                    } else {
-                        allAppsListView
+                        if viewModel.viewMode == .folders {
+                            CategoryGridView(
+                                viewModel: viewModel.categoryViewModel,
+                                onLaunchApp: { app in viewModel.launchApp(app) },
+                                onExpandCategory: { category in
+                                    let apps = viewModel.categoryViewModel.appsForCategory(category)
+                                    viewModel.searchViewModel.setActiveFolder(category, apps: apps)
+                                },
+                                hasNewOrUpdatedApps: { viewModel.hasNewOrUpdatedApps(in: $0) },
+                                aggregateBadgeCount: { viewModel.badgeCount(for: $0) },
+                                highlightedIndex: viewModel.highlightedSection == .main ? viewModel.highlightedItemIndex : nil,
+                                suppressHover: viewModel.isKeyboardNavigating,
+                                onHoverChanged: { hovering in
+                                    if hovering && !viewModel.isKeyboardNavigating { viewModel.highlightedItemIndex = nil }
+                                }
+                            )
                             .padding(.top, 14)
+                        } else {
+                            allAppsListView
+                                .padding(.top, 14)
+                        }
                     }
+                    .padding(.horizontal, PlatformStyle.panelPadding)
+                    .padding(.bottom, PlatformStyle.panelPadding)
                 }
-                .padding(.horizontal, PlatformStyle.panelPadding)
-                .padding(.bottom, PlatformStyle.panelPadding)
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                .clipped()
+                .onChange(of: viewModel.highlightedItemIndex) { _, newIndex in
+                    guard let idx = newIndex else { return }
+                    let scrollID = viewModel.highlightedSection == .pinned ? "pinned-\(idx)" : "main-\(idx)"
+                    scrollProxy.scrollTo(scrollID)
+                }
+                .onChange(of: viewModel.highlightedSection) { _, newSection in
+                    guard let idx = viewModel.highlightedItemIndex else { return }
+                    let scrollID = newSection == .pinned ? "pinned-\(idx)" : "main-\(idx)"
+                    scrollProxy.scrollTo(scrollID)
+                }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            .clipped()
             .mask(
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
@@ -199,6 +285,7 @@ struct LauncherView: View {
 
     private func setViewMode(_ newMode: AppViewMode) {
         viewModel.viewMode = newMode
+        viewModel.highlightedItemIndex = nil
         if newMode == .folders {
             viewModel.selectedListCategory = nil
             viewModel.searchViewModel.clearActiveFolder()
@@ -305,10 +392,14 @@ struct LauncherView: View {
                     case .second(true, let drag):
                         if draggingCategory == nil {
                             draggingCategory = category
+                            categoryDragBaseOffset = .zero
                             didDragMove = false
                         }
                         if let drag {
-                            categoryDragOffset = drag.translation
+                            categoryDragOffset = CGSize(
+                                width: drag.translation.width + categoryDragBaseOffset.width,
+                                height: drag.translation.height + categoryDragBaseOffset.height
+                            )
                             if abs(drag.translation.width) > 2 || abs(drag.translation.height) > 2 {
                                 didDragMove = true
                             }
@@ -323,6 +414,7 @@ struct LauncherView: View {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         draggingCategory = nil
                         categoryDragOffset = .zero
+                        categoryDragBaseOffset = .zero
                     }
                     // If the user long-pressed without dragging, treat as a tap
                     if !wasDrag {
@@ -341,6 +433,7 @@ struct LauncherView: View {
     }
 
     private func handleCategoryTap(_ category: AppCategory) {
+        viewModel.highlightedItemIndex = nil
         if viewModel.selectedListCategory == category {
             viewModel.selectedListCategory = nil
             viewModel.searchViewModel.clearActiveFolder()
@@ -352,6 +445,7 @@ struct LauncherView: View {
     }
 
     private func checkForCategoryReorder(dragLocation: CGPoint, current: AppCategory) {
+        guard let currentFrame = chipFrames[current.rawValue] else { return }
         let categories = viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }
         for (rawValue, frame) in chipFrames {
             guard rawValue != current.rawValue,
@@ -360,6 +454,12 @@ struct LauncherView: View {
                   let target = categories.first(where: { $0.rawValue == rawValue }),
                   let toIndex = categories.firstIndex(of: target)
             else { continue }
+
+            // Adjust base offset so the chip stays under the cursor after the swap
+            categoryDragBaseOffset = CGSize(
+                width: categoryDragBaseOffset.width + (currentFrame.midX - frame.midX),
+                height: categoryDragBaseOffset.height + (currentFrame.midY - frame.midY)
+            )
 
             withAnimation(.easeInOut(duration: 0.2)) {
                 viewModel.categoryViewModel.moveCategory(
@@ -378,10 +478,14 @@ struct LauncherView: View {
     ]
 
     private var allAppsListView: some View {
-        VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
+        let mainApps = viewModel.allAppsSorted
+        let mainCount = mainApps.count
+        let mainHighlight = viewModel.highlightedSection == .main ? viewModel.highlightedItemIndex : nil
+        return VStack(alignment: .leading, spacing: PlatformStyle.sectionSpacing) {
             LazyVGrid(columns: listColumns, spacing: PlatformStyle.iconGridSpacing) {
-                ForEach(viewModel.allAppsSorted) { app in
-                    appIcon(for: app)
+                ForEach(Array(mainApps.enumerated()), id: \.element.id) { index, app in
+                    appIcon(for: app, isHighlighted: index == mainHighlight)
+                        .id("main-\(app.bundleIdentifier)")
                 }
             }
 
@@ -398,8 +502,9 @@ struct LauncherView: View {
                 }
 
                 LazyVGrid(columns: listColumns, spacing: PlatformStyle.iconGridSpacing) {
-                    ForEach(viewModel.otherAppsSorted) { app in
-                        appIcon(for: app)
+                    ForEach(Array(viewModel.otherAppsSorted.enumerated()), id: \.element.id) { index, app in
+                        appIcon(for: app, isHighlighted: (index + mainCount) == mainHighlight)
+                            .id("other-\(app.bundleIdentifier)")
                     }
                 }
             }
@@ -408,7 +513,7 @@ struct LauncherView: View {
 
     // MARK: - Helpers
 
-    private func appIcon(for app: AppItem) -> some View {
+    private func appIcon(for app: AppItem, isHighlighted: Bool = false) -> some View {
         AppIconView(
             app: app,
             isPinned: viewModel.isAppPinned(app),
@@ -416,34 +521,71 @@ struct LauncherView: View {
             showNewDot: app.isNew,
             showUpdatedDot: app.isUpdated,
             badgeCount: viewModel.badgeCount(for: app),
+            isHighlighted: isHighlighted,
+            suppressHover: viewModel.isKeyboardNavigating,
             onLaunch: { viewModel.launchApp(app) },
             onPin: { viewModel.pinApp(app) },
             onUnpin: { viewModel.unpinApp(app) },
             onMoveToCategory: { category in viewModel.moveAppToCategory(app, category: category) },
             onAddToDock: { viewModel.addToDock(app) },
             onCreateShortcut: { viewModel.createDesktopShortcut(app) },
-            onUninstall: { viewModel.requestUninstall(app) }
+            onUninstall: { viewModel.requestUninstall(app) },
+            onHoverChanged: { hovering in
+                if hovering && !viewModel.isKeyboardNavigating { viewModel.highlightedItemIndex = nil }
+            }
         )
     }
 
-    private func handleMouseBack() {
-        if viewModel.categoryViewModel.expandedCategory != nil {
-            viewModel.categoryViewModel.collapseCategory()
-            viewModel.searchViewModel.clearActiveFolder()
-        } else if viewModel.selectedListCategory != nil {
-            viewModel.selectedListCategory = nil
-            viewModel.searchViewModel.clearActiveFolder()
-        }
+    private func launchPinnedApp(for press: KeyPress) -> KeyPress.Result {
+        guard let digit = press.characters.first?.wholeNumberValue,
+              digit >= 1, digit <= 9 else { return .ignored }
+        let pinned = viewModel.pinnedAppsViewModel.pinnedApps
+        let index = digit - 1
+        guard index < pinned.count else { return .ignored }
+        viewModel.launchApp(pinned[index])
+        return .handled
     }
 
     private func handleEscape() {
+        viewModel.highlightedItemIndex = nil
+        showCursorIfNeeded()
         if viewModel.searchViewModel.isActive {
             viewModel.searchViewModel.clearSearch()
         } else if viewModel.categoryViewModel.expandedCategory != nil {
             viewModel.categoryViewModel.collapseCategory()
             viewModel.searchViewModel.clearActiveFolder()
+        } else if viewModel.selectedListCategory != nil {
+            viewModel.selectedListCategory = nil
+            viewModel.searchViewModel.clearActiveFolder()
         } else {
             viewModel.onDismiss?()
+        }
+    }
+
+    // MARK: - Cursor Management
+
+    private func hideCursorForKeyboardNav() {
+        guard !isCursorHidden else { return }
+        isCursorHidden = true
+        viewModel.isKeyboardNavigating = true
+        NSCursor.hide()
+
+        // Install a local monitor that fires when the mouse actually moves
+        mouseMoveMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { event in
+            showCursorIfNeeded()
+            return event
+        }
+    }
+
+    private func showCursorIfNeeded() {
+        guard isCursorHidden else { return }
+        isCursorHidden = false
+        viewModel.isKeyboardNavigating = false
+        NSCursor.unhide()
+
+        if let monitor = mouseMoveMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseMoveMonitor = nil
         }
     }
 }

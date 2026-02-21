@@ -22,9 +22,10 @@ struct AppItem: Identifiable, Hashable, Sendable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(bundleIdentifier)
+        hasher.combine(category)
     }
 
     static func == (lhs: AppItem, rhs: AppItem) -> Bool {
-        lhs.bundleIdentifier == rhs.bundleIdentifier
+        lhs.bundleIdentifier == rhs.bundleIdentifier && lhs.category == rhs.category
     }
 }

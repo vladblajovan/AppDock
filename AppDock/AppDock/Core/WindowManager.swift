@@ -19,6 +19,7 @@ final class WindowManager {
             }
         }
     }
+    var onVisibilityChanged: ((Bool) -> Void)?
 
     func togglePanel() {
         if isVisible {
@@ -73,6 +74,7 @@ final class WindowManager {
         if hideOnFocusLoss {
             startClickOutsideMonitor()
         }
+        onVisibilityChanged?(true)
     }
 
     func hidePanel() {
@@ -81,6 +83,7 @@ final class WindowManager {
         isVisible = false
         lastHideTime = Date()
         stopClickOutsideMonitor()
+        onVisibilityChanged?(false)
         panel.alphaValue = 0
         panel.orderOut(nil)
     }

@@ -6,6 +6,9 @@ struct CategoryGridView: View {
     var onExpandCategory: ((AppCategory) -> Void)?
     var hasNewOrUpdatedApps: ((AppCategory) -> Bool)?
     var aggregateBadgeCount: ((AppCategory) -> Int)?
+    var highlightedIndex: Int? = nil
+    var suppressHover: Bool = false
+    var onHoverChanged: ((Bool) -> Void)?
 
     private let columns = [
         GridItem(.adaptive(minimum: 180, maximum: 240), spacing: PlatformStyle.categoryGridSpacing)
@@ -13,17 +16,21 @@ struct CategoryGridView: View {
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: PlatformStyle.categoryGridSpacing) {
-            ForEach(viewModel.nonEmptyCategories) { category in
+            ForEach(Array(viewModel.nonEmptyCategories.enumerated()), id: \.element) { index, category in
                 CategoryTileView(
                     category: category,
                     previewApps: viewModel.previewApps(for: category),
                     appCount: viewModel.appsForCategory(category).count,
                     hasNewOrUpdatedApps: hasNewOrUpdatedApps?(category) ?? false,
-                    aggregateBadgeCount: aggregateBadgeCount?(category) ?? 0
+                    aggregateBadgeCount: aggregateBadgeCount?(category) ?? 0,
+                    isHighlighted: index == highlightedIndex,
+                    suppressHover: suppressHover,
+                    onHoverChanged: onHoverChanged
                 ) {
                     viewModel.expandCategory(category)
                     onExpandCategory?(category)
                 }
+                .id("main-\(index)")
             }
         }
     }
@@ -35,6 +42,9 @@ struct CategoryTileView: View {
     let appCount: Int
     var hasNewOrUpdatedApps: Bool = false
     var aggregateBadgeCount: Int = 0
+    var isHighlighted: Bool = false
+    var suppressHover: Bool = false
+    var onHoverChanged: ((Bool) -> Void)?
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -92,7 +102,7 @@ struct CategoryTileView: View {
             .padding(PlatformStyle.tilePaddingH)
             .background(
                 RoundedRectangle(cornerRadius: PlatformStyle.categoryTileCornerRadius)
-                    .fill(isHovered ? PlatformStyle.categoryTileHoverBackground : PlatformStyle.categoryTileBackground)
+                    .fill(((isHovered && !suppressHover) || isHighlighted) ? PlatformStyle.categoryTileHoverBackground : PlatformStyle.categoryTileBackground)
             )
             .clipShape(RoundedRectangle(cornerRadius: PlatformStyle.categoryTileCornerRadius))
         }
@@ -107,6 +117,7 @@ struct CategoryTileView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
+            onHoverChanged?(hovering)
         }
     }
 }

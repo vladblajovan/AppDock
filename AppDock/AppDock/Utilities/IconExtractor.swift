@@ -72,7 +72,7 @@ final class IconExtractor {
         let iconSize = iconRect.width
         let weekdayAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: iconSize * 0.18, weight: .semibold),
-            .foregroundColor: NSColor(calibratedRed: 0.95, green: 0.3, blue: 0.28, alpha: 1.0)
+            .foregroundColor: NSColor(calibratedRed: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
         ]
         let weekdayStr = weekday as NSString
         let weekdaySize = weekdayStr.size(withAttributes: weekdayAttrs)
@@ -84,7 +84,7 @@ final class IconExtractor {
 
         // Draw day number large and centered
         let dayAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: iconSize * 0.47, weight: .light),
+            .font: NSFont.systemFont(ofSize: iconSize * 0.47, weight: .medium),
             .foregroundColor: NSColor.white
         ]
         let dayStr = "\(day)" as NSString

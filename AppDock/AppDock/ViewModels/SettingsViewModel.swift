@@ -20,7 +20,10 @@ final class SettingsViewModel {
     var onHotkeyChanged: ((Int, Int) -> Void)?
     var onHideOnFocusLossChanged: ((Bool) -> Void)?
     var onShowNotificationBadgesChanged: ((Bool) -> Void)?
+    var onCategoryOverridesReset: (() -> Void)?
     var badgeService: BadgeService?
+    var hotkeyWarning: String? = nil
+    var hotkeyConflictSettingsPath: String? = nil
 
     var isLLMAvailable: Bool {
         if #available(macOS 26, *) { return true }
@@ -125,9 +128,46 @@ final class SettingsViewModel {
         onHideOnFocusLossChanged?(value)
     }
 
+    func resetCategoryOverrides() {
+        let descriptor = FetchDescriptor<AppPreference>()
+        guard let allPrefs = try? modelContext.fetch(descriptor) else { return }
+        for pref in allPrefs where pref.categoryOverride != nil {
+            pref.categoryOverride = nil
+        }
+        try? modelContext.save()
+        onCategoryOverridesReset?()
+    }
+
+    var hasCategoryOverrides: Bool {
+        let descriptor = FetchDescriptor<AppPreference>()
+        guard let allPrefs = try? modelContext.fetch(descriptor) else { return false }
+        return allPrefs.contains { $0.categoryOverride != nil }
+    }
+
     func setHotkey(keyCode: Int, modifiers: Int) {
         hotkeyKeyCode = keyCode
         hotkeyModifiers = modifiers
+
+        if let conflict = HotkeyConflictChecker.check(keyCode: keyCode, modifiers: modifiers) {
+            if conflict.registrationFailed {
+                if let path = conflict.settingsPath {
+                    hotkeyWarning = "This shortcut is used by \(conflict.displayName). Disable it in System Settings > \(path) to use it here."
+                } else {
+                    hotkeyWarning = "This shortcut could not be registered — it is in use by \(conflict.displayName)."
+                }
+            } else {
+                if let path = conflict.settingsPath {
+                    hotkeyWarning = "This shortcut may conflict with \(conflict.displayName). If it doesn't work, disable it in System Settings > \(path)."
+                } else {
+                    hotkeyWarning = "This shortcut may conflict with \(conflict.displayName)."
+                }
+            }
+            hotkeyConflictSettingsPath = conflict.settingsPath
+        } else {
+            hotkeyWarning = nil
+            hotkeyConflictSettingsPath = nil
+        }
+
         saveSettings()
         onHotkeyChanged?(keyCode, modifiers)
     }

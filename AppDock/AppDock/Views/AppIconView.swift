@@ -16,6 +16,9 @@ struct AppIconView: View {
     var showNewDot: Bool = false
     var showUpdatedDot: Bool = false
     var badgeCount: Int = 0
+    var isHighlighted: Bool = false
+    var suppressHover: Bool = false
+    var onHoverChanged: ((Bool) -> Void)?
 
     @AppStorage("showAppNames") private var showAppNames: Bool = true
     @State private var isHovered = false
@@ -33,13 +36,16 @@ struct AppIconView: View {
         showNewDot: Bool = false,
         showUpdatedDot: Bool = false,
         badgeCount: Int = 0,
+        isHighlighted: Bool = false,
+        suppressHover: Bool = false,
         onLaunch: @escaping () -> Void,
         onPin: (() -> Void)? = nil,
         onUnpin: (() -> Void)? = nil,
         onMoveToCategory: ((AppCategory) -> Void)? = nil,
         onAddToDock: (() -> Void)? = nil,
         onCreateShortcut: (() -> Void)? = nil,
-        onUninstall: (() -> Void)? = nil
+        onUninstall: (() -> Void)? = nil,
+        onHoverChanged: ((Bool) -> Void)? = nil
     ) {
         self.app = app
         self.size = size
@@ -49,6 +55,8 @@ struct AppIconView: View {
         self.showNewDot = showNewDot
         self.showUpdatedDot = showUpdatedDot
         self.badgeCount = badgeCount
+        self.isHighlighted = isHighlighted
+        self.suppressHover = suppressHover
         self.onLaunch = onLaunch
         self.onPin = onPin
         self.onUnpin = onUnpin
@@ -56,6 +64,7 @@ struct AppIconView: View {
         self.onAddToDock = onAddToDock
         self.onCreateShortcut = onCreateShortcut
         self.onUninstall = onUninstall
+        self.onHoverChanged = onHoverChanged
     }
 
     var body: some View {
@@ -99,7 +108,7 @@ struct AppIconView: View {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)
-                .fill(isHovered ? Color.primary.opacity(0.1) : Color.clear)
+                .fill(((isHovered && !suppressHover) || isHighlighted) ? Color.primary.opacity(0.1) : Color.clear)
         )
         .contentShape(Rectangle())
         .onTapGesture { onLaunch() }
@@ -107,6 +116,7 @@ struct AppIconView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
+            onHoverChanged?(hovering)
         }
         .contextMenu { contextMenuContent }
     }
@@ -126,8 +136,14 @@ struct AppIconView: View {
         if onMoveToCategory != nil {
             Menu("Move to Category") {
                 ForEach(AppCategory.allCases) { category in
-                    Button(category.rawValue) {
+                    Button {
                         onMoveToCategory?(category)
+                    } label: {
+                        if category == app.category {
+                            Label(category.rawValue, systemImage: "checkmark")
+                        } else {
+                            Text(category.rawValue)
+                        }
                     }
                 }
             }

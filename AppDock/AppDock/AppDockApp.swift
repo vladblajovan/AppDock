@@ -9,8 +9,8 @@ struct AppDockApp: App {
     @AppStorage("hotkeyModifiers") private var hotkeyModifiers: Int = 0
 
     var body: some Scene {
-        MenuBarExtra("AppDock", systemImage: "square.grid.3x3.fill") {
-            Button("Show AppDock") {
+        MenuBarExtra(Bundle.main.appName, systemImage: "square.grid.3x3.fill") {
+            Button("Show \(Bundle.main.appName)") {
                 appDelegate.windowManager.togglePanel()
             }
             .modifier(DynamicHotkeyModifier(
@@ -25,7 +25,7 @@ struct AppDockApp: App {
             }
             .keyboardShortcut(",")
 
-            Button("Quit AppDock") {
+            Button("Quit \(Bundle.main.appName)") {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q")
@@ -43,6 +43,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let windowManager = WindowManager()
     let hotkeyManager = HotkeyManager()
     private var settingsWindow: NSWindow?
+    private nonisolated(unsafe) var mouseBackMonitor: Any?
+    private nonisolated(unsafe) var swipeBackMonitor: Any?
 
     let modelContainer: ModelContainer = {
         let schema = Schema([
@@ -89,6 +91,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         launcherViewModel.onDismiss = { [weak self] in
             self?.windowManager.hidePanel()
+        }
+        // Reinstall mouse-back / swipe monitors each time the panel shows,
+        // and tear them down when it hides. Local monitors can become stale
+        // when the panel's nonactivating style causes the app to lose focus.
+        windowManager.onVisibilityChanged = { [weak self] visible in
+            guard let self else { return }
+            self.removeMouseBackMonitors()
+            if visible {
+                self.installMouseBackMonitors()
+            }
         }
         launcherViewModel.onShowSettings = { [weak self] in
             self?.showSettings()
@@ -153,6 +165,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settingsVM.onHideOnFocusLossChanged = { [weak self] value in
             self?.windowManager.hideOnFocusLoss = value
         }
+        settingsVM.onCategoryOverridesReset = { [weak self] in
+            self?.launcherViewModel.refreshApps()
+        }
         settingsVM.onHotkeyChanged = { [weak self] keyCode, modifiers in
             UserDefaults.standard.set(keyCode, forKey: "hotkeyKeyCode")
             UserDefaults.standard.set(modifiers, forKey: "hotkeyModifiers")
@@ -170,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "AppDock Settings"
+        window.title = "\(Bundle.main.appName) Settings"
         window.level = .floating + 1
         window.appearance = windowManager.theme.nsAppearance
         window.contentView = hostingView
@@ -205,6 +220,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyManager.stop()
+        removeMouseBackMonitors()
+    }
+
+    private func installMouseBackMonitors() {
+        mouseBackMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
+            guard let self else { return event }
+            if event.buttonNumber == 3, self.windowManager.isVisible {
+                self.launcherViewModel.handleMouseBack()
+                return nil
+            }
+            return event
+        }
+        swipeBackMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) { [weak self] event in
+            guard let self else { return event }
+            if event.deltaX > 0, self.windowManager.isVisible {
+                self.launcherViewModel.handleMouseBack()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func removeMouseBackMonitors() {
+        if let mouseBackMonitor { NSEvent.removeMonitor(mouseBackMonitor) }
+        mouseBackMonitor = nil
+        if let swipeBackMonitor { NSEvent.removeMonitor(swipeBackMonitor) }
+        swipeBackMonitor = nil
     }
 }
 
@@ -281,6 +323,12 @@ struct DynamicHotkeyModifier: ViewModifier {
 }
 
 extension Bundle {
+    var appName: String {
+        (infoDictionary?["CFBundleName"] as? String)
+            ?? (infoDictionary?["CFBundleDisplayName"] as? String)
+            ?? "AppDock"
+    }
+
     var appVersionString: String {
         let version = infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = infoDictionary?["CFBundleVersion"] as? String ?? "?"

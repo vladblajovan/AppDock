@@ -40,6 +40,24 @@ struct SettingsView: View {
                     )
                     .frame(width: 140, height: 24)
                 }
+
+                if let warning = viewModel.hotkeyWarning {
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text(warning)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if viewModel.hotkeyConflictSettingsPath != nil {
+                        Button("Open Keyboard Settings") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
+                        }
+                        .controlSize(.small)
+                    }
+                }
             }
 
             Section("Behavior") {
@@ -87,6 +105,22 @@ struct SettingsView: View {
                 Text("Shows notification badge counts from apps in your Dock. Requires Accessibility permission to read badge information.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Categories") {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Reset Category Overrides")
+                        Text("Revert all manually assigned app categories back to their defaults.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Reset") {
+                        viewModel.resetCategoryOverrides()
+                    }
+                    .disabled(!viewModel.hasCategoryOverrides)
+                }
             }
 
             Section {

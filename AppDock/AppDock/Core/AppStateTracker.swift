@@ -32,6 +32,12 @@ final class AppStateTracker {
             let bundleID = app.bundleIdentifier
 
             if let pref = prefsByID[bundleID] {
+                // Apply persisted category override
+                if let overrideRaw = pref.categoryOverride,
+                   let overrideCategory = AppCategory(rawValue: overrideRaw) {
+                    result[i].category = overrideCategory
+                }
+
                 if pref.isNewApp {
                     // Not yet launched since being marked new
                     result[i].isNew = true

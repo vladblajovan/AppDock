@@ -44,8 +44,8 @@ final class AppScanner {
 
                 guard let metadata = AppMetadataParser.parse(bundleURL: resolvedURL) else { continue }
 
-                // Skip UI elements and background-only apps
-                if metadata.isUIElement || metadata.isBackgroundOnly { continue }
+                // Skip background-only apps (LSUIElement apps like menu-bar utilities are kept)
+                if metadata.isBackgroundOnly { continue }
 
                 // Skip known system helper apps
                 if Self.systemBundleIDPrefixes.contains(where: { metadata.bundleIdentifier.hasPrefix($0) }) {
