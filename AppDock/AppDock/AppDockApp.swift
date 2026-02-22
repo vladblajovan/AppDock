@@ -104,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let settings = SettingsHelper.getOrCreate(context: modelContext)
         let theme = AppTheme(rawValue: settings.theme) ?? .system
         windowManager.theme = theme
+        windowManager.applyTheme()
         windowManager.hideOnFocusLoss = settings.hideOnFocusLoss
 
         windowManager.setContentView(LauncherView(viewModel: launcherViewModel))
