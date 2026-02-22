@@ -11,6 +11,66 @@ final class IconExtractor {
         cache.countLimit = 500
     }
 
+    /// Pre-warm the icon cache for a batch of apps on a background thread.
+    /// Icons are extracted off the main thread and inserted into the cache,
+    /// so scrolling never hits a cache miss.
+    func preWarmCache(apps: [AppItem], sizes: [CGFloat]) {
+        struct IconJob: Sendable {
+            let path: String
+            let bundleIdentifier: String
+            let url: URL
+        }
+        let jobs = apps.map { IconJob(path: $0.url.path, bundleIdentifier: $0.bundleIdentifier, url: $0.url) }
+        let calendarID = Self.calendarBundleID
+
+        // Do the expensive NSWorkspace.icon(forFile:) calls on a background thread,
+        // then batch-insert results back into the main-actor cache.
+        Task.detached(priority: .userInitiated) {
+            let today = Calendar.current.component(.day, from: Date())
+            var results: [(NSString, NSImage)] = []
+            var calendarJobs: [(URL, CGFloat, NSString)] = []
+
+            for job in jobs {
+                for size in sizes {
+                    let isCalendar = job.bundleIdentifier == calendarID
+                    let key = (isCalendar
+                        ? "\(job.path)_\(Int(size))_day\(today)"
+                        : "\(job.path)_\(Int(size))") as NSString
+
+                    if isCalendar {
+                        calendarJobs.append((job.url, size, key))
+                    } else {
+                        let icon = NSWorkspace.shared.icon(forFile: job.path)
+                        icon.size = NSSize(width: size, height: size)
+                        results.append((key, icon))
+                    }
+                }
+            }
+
+            // Insert extracted icons into the cache on main actor.
+            // Use nonisolated(unsafe) to transfer the non-Sendable NSImage array across
+            // the isolation boundary. This is safe because the detached task is done
+            // mutating these values and ownership transfers to the main actor.
+            nonisolated(unsafe) let batch = results
+            nonisolated(unsafe) let calJobs = calendarJobs
+            await MainActor.run {
+                let extractor = IconExtractor.shared
+                for (key, image) in batch {
+                    if extractor.cache.object(forKey: key) == nil {
+                        extractor.cache.setObject(image, forKey: key)
+                    }
+                }
+                // Calendar icons use lockFocus which requires main thread
+                for (url, size, key) in calJobs {
+                    if extractor.cache.object(forKey: key) == nil {
+                        let icon = extractor.calendarIcon(bundleURL: url, size: size)
+                        extractor.cache.setObject(icon, forKey: key)
+                    }
+                }
+            }
+        }
+    }
+
     func icon(for bundleURL: URL, size: CGFloat, bundleIdentifier: String? = nil) -> NSImage {
         let today = Calendar.current.component(.day, from: Date())
         let isCalendar = bundleIdentifier == Self.calendarBundleID

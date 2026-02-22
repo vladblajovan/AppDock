@@ -36,7 +36,7 @@ final class LLMClassificationCache {
 final class AppSettings {
     var hotkeyKeyCode: Int = -1
     var hotkeyModifiers: Int = 0
-    var showSuggestions: Bool = true
+    var showSuggestions: Bool = false
     var maxPinnedApps: Int = 12
     var maxSuggestions: Int = 8
     var launchAtLogin: Bool = false
@@ -50,8 +50,9 @@ final class AppSettings {
     var lastPanelPositionY: Double?
     var lastPanelHeight: Double?
     var hasPerformedInitialScan: Bool = false
-    var showNotificationBadges: Bool = false
+    var showNotificationBadges: Bool = true
     var categoryOrder: String = ""
+    var viewMode: String = "Folders"
 
     init() {}
 

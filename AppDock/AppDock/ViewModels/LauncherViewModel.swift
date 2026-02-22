@@ -15,9 +15,20 @@ enum BrowseSection {
 @Observable
 final class LauncherViewModel {
     // MARK: - Published State
-    var allApps: [AppItem] = []
-    var viewMode: AppViewMode = .folders
-    var selectedListCategory: AppCategory? = nil
+    var allApps: [AppItem] = [] {
+        didSet { invalidateSortedCaches() }
+    }
+    var viewMode: AppViewMode = .folders {
+        didSet {
+            guard didFinishInit else { return }
+            let s = SettingsHelper.getOrCreate(context: modelContext)
+            s.viewMode = viewMode.rawValue
+            try? modelContext.save()
+        }
+    }
+    var selectedListCategory: AppCategory? = nil {
+        didSet { invalidateSortedCaches() }
+    }
     var isLoading: Bool = true
     var appPendingUninstall: AppItem? = nil
     var uninstallError: String? = nil
@@ -33,6 +44,8 @@ final class LauncherViewModel {
     let searchViewModel = SearchViewModel()
     let categoryViewModel = CategoryViewModel()
     let pinnedAppsViewModel: PinnedAppsViewModel
+
+    private var didFinishInit = false
 
     // MARK: - Services (injected)
     private let appScanner: AppScanner
@@ -54,8 +67,11 @@ final class LauncherViewModel {
         self.appStateTracker = AppStateTracker(modelContext: modelContext)
         self.pinnedAppsViewModel = PinnedAppsViewModel(modelContext: modelContext)
 
-        // Load saved category order
+        // Load saved view mode and category order
         let settings = SettingsHelper.getOrCreate(context: modelContext)
+        if let savedMode = AppViewMode(rawValue: settings.viewMode) {
+            self.viewMode = savedMode
+        }
         if !settings.categoryOrder.isEmpty {
             let rawValues = settings.categoryOrder.components(separatedBy: ",")
             categoryViewModel.categoryOrder = rawValues.compactMap { AppCategory(rawValue: $0) }
@@ -76,21 +92,44 @@ final class LauncherViewModel {
             self?.selectedListCategory = nil
             self?.categoryViewModel.collapseCategory()
         }
+
+        didFinishInit = true
     }
 
+    // Cached sorted lists — invalidated when allApps or selectedListCategory changes
+    private var cachedAllAppsSorted: [AppItem]?
+    private var cachedAllAppsSortedCategory: AppCategory?? = .some(nil) // sentinel to force first computation
+    private var cachedOtherAppsSorted: [AppItem]?
+
     var allAppsSorted: [AppItem] {
-        let filtered = if let cat = selectedListCategory {
+        let cat = selectedListCategory
+        if let cached = cachedAllAppsSorted, cachedAllAppsSortedCategory == .some(cat) {
+            return cached
+        }
+        let filtered = if let cat {
             allApps.filter { $0.category == cat }
         } else {
             allApps.filter { $0.category != .other }
         }
-        return filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let sorted = filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        cachedAllAppsSorted = sorted
+        cachedAllAppsSortedCategory = .some(cat)
+        return sorted
     }
 
     var otherAppsSorted: [AppItem] {
-        allApps
+        if let cached = cachedOtherAppsSorted { return cached }
+        let sorted = allApps
             .filter { $0.category == .other }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        cachedOtherAppsSorted = sorted
+        return sorted
+    }
+
+    private func invalidateSortedCaches() {
+        cachedAllAppsSorted = nil
+        cachedAllAppsSortedCategory = .some(nil)
+        cachedOtherAppsSorted = nil
     }
 
     var currentBrowseItemCount: Int {
@@ -371,5 +410,8 @@ final class LauncherViewModel {
         let grouped = Dictionary(grouping: allApps, by: \.category)
         categoryViewModel.updateCategories(grouped)
         isLoading = false
+
+        // Pre-warm icon cache at all display sizes on a background thread
+        IconExtractor.shared.preWarmCache(apps: allApps, sizes: [PlatformStyle.appIconSize, 56])
     }
 }

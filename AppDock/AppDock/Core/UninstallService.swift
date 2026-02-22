@@ -30,13 +30,25 @@ final class UninstallService {
             return .failure(.protected)
         }
 
-        do {
-            try FileManager.default.trashItem(at: app.url, resultingItemURL: nil)
-            cleanupSwiftData(bundleID: app.bundleIdentifier)
-            return .success(())
-        } catch {
-            return .failure(.failed(error.localizedDescription))
+        // Use NSWorkspace.recycle which goes through Finder and properly handles
+        // permission dialogs for apps in /Applications/ that require admin privileges.
+        let result: Result<Void, UninstallError> = await withCheckedContinuation { continuation in
+            NSWorkspace.shared.recycle([app.url]) { trashedURLs, error in
+                if let error {
+                    continuation.resume(returning: .failure(.failed(error.localizedDescription)))
+                } else if trashedURLs.isEmpty {
+                    continuation.resume(returning: .failure(.failed("The app could not be moved to Trash.")))
+                } else {
+                    continuation.resume(returning: .success(()))
+                }
+            }
         }
+
+        if case .success = result {
+            cleanupSwiftData(bundleID: app.bundleIdentifier)
+        }
+
+        return result
     }
 
     private func cleanupSwiftData(bundleID: String) {

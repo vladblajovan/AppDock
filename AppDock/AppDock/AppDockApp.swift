@@ -99,23 +99,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         launcherViewModel.onShowSettings = { [weak self] in
             self?.showSettings()
         }
-        windowManager.setContentView(LauncherView(viewModel: launcherViewModel))
 
-        // Load settings and apply theme + hotkey
+        // Load settings and apply theme BEFORE creating the panel content view
         let settings = SettingsHelper.getOrCreate(context: modelContext)
         let theme = AppTheme(rawValue: settings.theme) ?? .system
         windowManager.theme = theme
         windowManager.hideOnFocusLoss = settings.hideOnFocusLoss
 
-        // Sync SwiftData values to UserDefaults so @AppStorage in menu bar stays current
+        windowManager.setContentView(LauncherView(viewModel: launcherViewModel))
+
+        // Sync SwiftData values to UserDefaults so @AppStorage in views stays current
         UserDefaults.standard.set(settings.hotkeyKeyCode, forKey: "hotkeyKeyCode")
         UserDefaults.standard.set(settings.hotkeyModifiers, forKey: "hotkeyModifiers")
-        if UserDefaults.standard.object(forKey: "showAppNames") == nil {
-            UserDefaults.standard.set(settings.showAppNames, forKey: "showAppNames")
-        }
-        if UserDefaults.standard.object(forKey: "showPinnedAppNames") == nil {
-            UserDefaults.standard.set(settings.showPinnedAppNames, forKey: "showPinnedAppNames")
-        }
+        UserDefaults.standard.set(settings.showAppNames, forKey: "showAppNames")
+        UserDefaults.standard.set(settings.showPinnedAppNames, forKey: "showPinnedAppNames")
         hotkeyManager.updateHotkey(
             keyCode: settings.hotkeyKeyCode,
             modifierFlags: CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))

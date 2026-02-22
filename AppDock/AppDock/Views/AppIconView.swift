@@ -68,48 +68,16 @@ struct AppIconView: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Image(nsImage: IconExtractor.shared.icon(for: app.url, size: size, bundleIdentifier: app.bundleIdentifier))
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
-                .overlay(alignment: .topTrailing) {
-                    if showNewDot {
-                        Circle()
-                            .fill(.blue)
-                            .frame(width: 10, height: 10)
-                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
-                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
-                    } else if showUpdatedDot {
-                        Circle()
-                            .fill(.orange)
-                            .frame(width: 10, height: 10)
-                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
-                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
-                    } else if badgeCount > 0 {
-                        BadgeLabelView(count: badgeCount)
-                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
-                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
-                    }
-                }
-
-            if shouldShowName {
-                Text(app.name)
-                    .font(PlatformStyle.appLabelFont)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .multilineTextAlignment(.center)
-                    .frame(width: size + 16, alignment: .top)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: shouldShowName ? size + 40 : size, alignment: .top)
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)
-                .fill(((isHovered && !suppressHover) || isHighlighted) ? Color.primary.opacity(0.1) : Color.clear)
+        AppIconContent(
+            app: app,
+            size: size,
+            showName: shouldShowName,
+            showNewDot: showNewDot,
+            showUpdatedDot: showUpdatedDot,
+            badgeCount: badgeCount,
+            isHighlighted: isHighlighted || (isHovered && !suppressHover)
         )
+        .equatable()
         .contentShape(Rectangle())
         .onTapGesture { onLaunch() }
         .onHover { hovering in
@@ -171,5 +139,72 @@ struct AppIconView: View {
         Button("Show in Finder") {
             NSWorkspace.shared.selectFile(app.url.path, inFileViewerRootedAtPath: app.url.deletingLastPathComponent().path)
         }
+    }
+}
+
+/// Pure data-driven inner view — no closures, enabling SwiftUI to skip re-renders
+/// when only the parent's closures change but visual data is identical.
+private struct AppIconContent: View, Equatable {
+    let app: AppItem
+    let size: CGFloat
+    let showName: Bool
+    let showNewDot: Bool
+    let showUpdatedDot: Bool
+    let badgeCount: Int
+    let isHighlighted: Bool
+
+    static func == (lhs: AppIconContent, rhs: AppIconContent) -> Bool {
+        lhs.app.bundleIdentifier == rhs.app.bundleIdentifier
+            && lhs.app.category == rhs.app.category
+            && lhs.size == rhs.size
+            && lhs.showName == rhs.showName
+            && lhs.showNewDot == rhs.showNewDot
+            && lhs.showUpdatedDot == rhs.showUpdatedDot
+            && lhs.badgeCount == rhs.badgeCount
+            && lhs.isHighlighted == rhs.isHighlighted
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(nsImage: IconExtractor.shared.icon(for: app.url, size: size, bundleIdentifier: app.bundleIdentifier))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size, height: size)
+                .overlay(alignment: .topTrailing) {
+                    if badgeCount > 0 {
+                        BadgeLabelView(count: badgeCount)
+                            .alignmentGuide(.top) { $0[VerticalAlignment.center] }
+                            .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] }
+                    }
+                }
+
+            if showName {
+                HStack(spacing: 4) {
+                    if showNewDot {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 7, height: 7)
+                    } else if showUpdatedDot {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 7, height: 7)
+                    }
+                    Text(app.name)
+                        .font(PlatformStyle.appLabelFont)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(width: size + 16, alignment: .top)
+            }
+        }
+        .frame(maxWidth: showName ? .infinity : size + 12)
+        .frame(height: showName ? size + 40 : size, alignment: .top)
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: PlatformStyle.appIconContainerRadius)
+                .fill(isHighlighted ? Color.primary.opacity(0.1) : Color.clear)
+        )
     }
 }
