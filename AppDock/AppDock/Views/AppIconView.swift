@@ -179,15 +179,17 @@ private struct AppIconContent: View, Equatable {
                 }
 
             if showName {
-                HStack(spacing: 4) {
+                HStack(alignment: .top, spacing: 4) {
                     if showNewDot {
                         Circle()
                             .fill(.blue)
                             .frame(width: 7, height: 7)
+                            .frame(height: NSFont.systemFont(ofSize: 12).boundingRectForFont.height)
                     } else if showUpdatedDot {
                         Circle()
                             .fill(.orange)
                             .frame(width: 7, height: 7)
+                            .frame(height: NSFont.systemFont(ofSize: 12).boundingRectForFont.height)
                     }
                     Text(app.name)
                         .font(PlatformStyle.appLabelFont)

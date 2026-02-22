@@ -11,6 +11,10 @@ final class IconExtractor {
         cache.countLimit = 500
     }
 
+    func clearCache() {
+        cache.removeAllObjects()
+    }
+
     /// Pre-warm the icon cache for a batch of apps on a background thread.
     /// Icons are extracted off the main thread and inserted into the cache,
     /// so scrolling never hits a cache miss.

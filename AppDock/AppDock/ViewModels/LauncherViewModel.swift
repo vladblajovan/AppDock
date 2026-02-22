@@ -7,6 +7,7 @@ enum AppViewMode: String, CaseIterable {
 }
 
 enum BrowseSection {
+    case categories
     case pinned
     case main
 }
@@ -156,10 +157,24 @@ final class LauncherViewModel {
             && !(viewMode == .list && selectedListCategory != nil)
     }
 
+    /// Whether the category carousel is visible (list mode, no category selected, no expanded folder).
+    var isCategoryCarouselVisible: Bool {
+        viewMode == .list
+            && categoryViewModel.expandedCategory == nil
+    }
+
+    /// Categories shown in the carousel (excludes "Other").
+    var carouselCategories: [AppCategory] {
+        categoryViewModel.nonEmptyCategories.filter { $0 != .other }
+    }
+
     func moveHighlightInBrowse(_ direction: NavigationDirection, columnsPerRow: Int, pinnedColumnsPerRow: Int) {
         guard let current = highlightedItemIndex else {
-            // First press: activate highlight at top-left of the appropriate section
-            if isPinnedRowVisible {
+            // First press: activate highlight at top-left of the topmost visible section
+            if isCategoryCarouselVisible {
+                highlightedSection = .categories
+                highlightedItemIndex = 0
+            } else if isPinnedRowVisible {
                 highlightedSection = .pinned
                 highlightedItemIndex = 0
             } else {
@@ -171,6 +186,8 @@ final class LauncherViewModel {
 
         let count: Int
         switch highlightedSection {
+        case .categories:
+            count = carouselCategories.count
         case .pinned:
             count = pinnedAppsViewModel.pinnedApps.count
         case .main:
@@ -183,8 +200,15 @@ final class LauncherViewModel {
         case .left:
             highlightedItemIndex = max(current - 1, 0)
         case .down:
-            if highlightedSection == .pinned {
-                // Move from pinned → main section
+            if highlightedSection == .categories {
+                if isPinnedRowVisible {
+                    highlightedSection = .pinned
+                    highlightedItemIndex = 0
+                } else {
+                    highlightedSection = .main
+                    highlightedItemIndex = 0
+                }
+            } else if highlightedSection == .pinned {
                 highlightedSection = .main
                 highlightedItemIndex = 0
             } else {
@@ -197,19 +221,46 @@ final class LauncherViewModel {
                 if prev >= 0 {
                     highlightedItemIndex = prev
                 } else if isPinnedRowVisible {
-                    // Move from main → pinned section
                     highlightedSection = .pinned
+                    highlightedItemIndex = 0
+                } else if isCategoryCarouselVisible {
+                    highlightedSection = .categories
+                    highlightedItemIndex = 0
+                }
+            } else if highlightedSection == .pinned {
+                let prev = current - pinnedColumnsPerRow
+                if prev >= 0 {
+                    highlightedItemIndex = prev
+                } else if isCategoryCarouselVisible {
+                    highlightedSection = .categories
                     highlightedItemIndex = 0
                 }
             } else {
-                let prev = current - pinnedColumnsPerRow
-                if prev >= 0 { highlightedItemIndex = prev }
+                // categories — no row above
+                highlightedItemIndex = max(current - 1, 0)
             }
         }
     }
 
     func activateHighlightedItem() {
         guard let index = highlightedItemIndex else { return }
+
+        if highlightedSection == .categories {
+            let cats = carouselCategories
+            guard index < cats.count else { return }
+            let category = cats[index]
+            if selectedListCategory == category {
+                selectedListCategory = nil
+                searchViewModel.clearActiveFolder()
+            } else {
+                selectedListCategory = category
+                let apps = categoryViewModel.appsForCategory(category)
+                searchViewModel.setActiveFolder(category, apps: apps)
+            }
+            highlightedSection = .main
+            highlightedItemIndex = 0
+            return
+        }
 
         if highlightedSection == .pinned {
             let pinned = pinnedAppsViewModel.pinnedApps
@@ -411,7 +462,8 @@ final class LauncherViewModel {
         categoryViewModel.updateCategories(grouped)
         isLoading = false
 
-        // Pre-warm icon cache at all display sizes on a background thread
+        // Clear stale icons (app updates may change icons) and pre-warm fresh ones
+        IconExtractor.shared.clearCache()
         IconExtractor.shared.preWarmCache(apps: allApps, sizes: [PlatformStyle.appIconSize, 56])
     }
 }

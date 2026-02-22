@@ -344,11 +344,12 @@ struct LauncherView: View {
     // MARK: - Category Carousel
 
     private var categoryCarousel: some View {
-        ScrollViewReader { proxy in
+        let highlightedCategoryIndex = viewModel.highlightedSection == .categories ? viewModel.highlightedItemIndex : nil
+        return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
-                    ForEach(viewModel.categoryViewModel.nonEmptyCategories.filter { $0 != .other }) { category in
-                        categoryChip(category: category)
+                    ForEach(Array(viewModel.carouselCategories.enumerated()), id: \.element) { index, category in
+                        categoryChip(category: category, isKeyboardHighlighted: index == highlightedCategoryIndex)
                             .id(category)
                     }
                 }
@@ -360,12 +361,20 @@ struct LauncherView: View {
             }
             .scrollIndicators(.hidden)
             .scrollDisabled(draggingCategory != nil)
+            .onChange(of: highlightedCategoryIndex) { _, newIndex in
+                guard let idx = newIndex else { return }
+                let cats = viewModel.carouselCategories
+                guard idx < cats.count else { return }
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    proxy.scrollTo(cats[idx], anchor: .center)
+                }
+            }
         }
     }
 
     @State private var didDragMove = false
 
-    private func categoryChip(category: AppCategory) -> some View {
+    private func categoryChip(category: AppCategory, isKeyboardHighlighted: Bool = false) -> some View {
         let isSelected = viewModel.selectedListCategory == category
         let isDragging = draggingCategory == category
         return HStack(spacing: 7) {
@@ -375,13 +384,13 @@ struct LauncherView: View {
             Text(category.rawValue)
                 .font(.system(size: 14, weight: .medium))
                 .lineLimit(1)
-                .foregroundStyle(isSelected ? Color.primary : .secondary)
+                .foregroundStyle(isSelected || isKeyboardHighlighted ? Color.primary : .secondary)
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 8)
         .background(
             Capsule()
-                .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.primary.opacity(0.08))
+                .fill(isSelected ? Color.accentColor.opacity(0.2) : isKeyboardHighlighted ? Color.primary.opacity(0.15) : Color.primary.opacity(0.08))
         )
         .contentShape(Capsule())
         .opacity(isDragging ? 0.5 : 1)
@@ -526,6 +535,9 @@ struct LauncherView: View {
     /// Maps a highlighted section + index to the `.id()` value used on the corresponding view.
     private func scrollIDForHighlight(section: BrowseSection, index: Int) -> String? {
         switch section {
+        case .categories:
+            // Categories carousel handles its own scrolling via ScrollViewReader
+            return nil
         case .pinned:
             let pinned = viewModel.pinnedAppsViewModel.pinnedApps
             guard index < pinned.count else { return nil }
