@@ -1,10 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- macOS rounded rect clip (squircle) -->
-    <clipPath id="iconClip">
-      <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228"/>
-    </clipPath>
-
     <!-- Glass gradient background -->
     <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#3A3F4B" stop-opacity="1"/>
@@ -36,47 +31,45 @@
     </linearGradient>
   </defs>
 
-  <g clip-path="url(#iconClip)">
-    <!-- Background -->
-    <rect width="1024" height="1024" fill="url(#bgGrad)"/>
+  <!-- Background — full bleed, macOS applies squircle mask automatically -->
+  <rect width="1024" height="1024" fill="url(#bgGrad)"/>
 
-    <!-- Subtle radial glow in center -->
-    <rect width="1024" height="1024" fill="url(#gridGlow)"/>
+  <!-- Subtle radial glow in center -->
+  <rect width="1024" height="1024" fill="url(#gridGlow)"/>
 
-    <!-- Glass shine overlay -->
-    <rect width="1024" height="512" fill="url(#shine)"/>
+  <!-- Glass shine overlay -->
+  <rect width="1024" height="512" fill="url(#shine)"/>
 
-    <!-- Search bar -->
-    <rect x="200" y="215" width="624" height="72" rx="36" ry="36" fill="url(#searchBarGrad)" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+  <!-- Search bar -->
+  <rect x="200" y="215" width="624" height="72" rx="36" ry="36" fill="url(#searchBarGrad)" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
 
-    <!-- Magnifying glass icon in search bar -->
-    <g transform="translate(235, 234)" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="4.5" stroke-linecap="round">
-      <circle cx="16" cy="16" r="12"/>
-      <line x1="24" y1="24" x2="33" y2="33"/>
-    </g>
-
-    <!-- Search placeholder text lines -->
-    <rect x="280" y="242" width="120" height="10" rx="5" fill="#ffffff" fill-opacity="0.2"/>
-
-    <!-- 3x3 Grid of app dots — shifted down to make room for search bar -->
-    <g filter="url(#dotShadow)">
-      <!-- Row 1 -->
-      <circle cx="340" cy="420" r="68" fill="#FF6B6B"/>
-      <circle cx="512" cy="420" r="68" fill="#4ECDC4"/>
-      <circle cx="684" cy="420" r="68" fill="#45B7D1"/>
-
-      <!-- Row 2 -->
-      <circle cx="340" cy="590" r="68" fill="#96CEB4"/>
-      <circle cx="512" cy="590" r="68" fill="#FFEAA7"/>
-      <circle cx="684" cy="590" r="68" fill="#DDA0DD"/>
-
-      <!-- Row 3 -->
-      <circle cx="340" cy="760" r="68" fill="#F39C12"/>
-      <circle cx="512" cy="760" r="68" fill="#6C5CE7"/>
-      <circle cx="684" cy="760" r="68" fill="#55E6C1"/>
-    </g>
-
-    <!-- Top edge highlight -->
-    <rect x="0" y="0" width="1024" height="2" fill="#ffffff" opacity="0.15"/>
+  <!-- Magnifying glass icon in search bar -->
+  <g transform="translate(235, 234)" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="4.5" stroke-linecap="round">
+    <circle cx="16" cy="16" r="12"/>
+    <line x1="24" y1="24" x2="33" y2="33"/>
   </g>
+
+  <!-- Search placeholder text lines -->
+  <rect x="280" y="242" width="120" height="10" rx="5" fill="#ffffff" fill-opacity="0.2"/>
+
+  <!-- 3x3 Grid of app dots -->
+  <g filter="url(#dotShadow)">
+    <!-- Row 1 -->
+    <circle cx="340" cy="420" r="68" fill="#FF6B6B"/>
+    <circle cx="512" cy="420" r="68" fill="#4ECDC4"/>
+    <circle cx="684" cy="420" r="68" fill="#45B7D1"/>
+
+    <!-- Row 2 -->
+    <circle cx="340" cy="590" r="68" fill="#96CEB4"/>
+    <circle cx="512" cy="590" r="68" fill="#FFEAA7"/>
+    <circle cx="684" cy="590" r="68" fill="#DDA0DD"/>
+
+    <!-- Row 3 -->
+    <circle cx="340" cy="760" r="68" fill="#F39C12"/>
+    <circle cx="512" cy="760" r="68" fill="#6C5CE7"/>
+    <circle cx="684" cy="760" r="68" fill="#55E6C1"/>
+  </g>
+
+  <!-- Top edge highlight -->
+  <rect x="0" y="0" width="1024" height="2" fill="#ffffff" opacity="0.15"/>
 </svg>
