@@ -71,7 +71,7 @@ struct PinnedAppsRow: View {
                                 }
                             }
                             .onEnded { _ in
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(.easeOut(duration: 0.08)) {
                                     draggingApp = nil
                                     dragOffset = .zero
                                     dragBaseOffset = .zero
@@ -104,7 +104,7 @@ struct PinnedAppsRow: View {
                 height: dragBaseOffset.height + (currentFrame.midY - targetFrame.midY)
             )
 
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeOut(duration: 0.08)) {
                 viewModel.movePinnedApp(from: IndexSet(integer: fromIndex), to: toIndex > fromIndex ? toIndex + 1 : toIndex)
             }
             break

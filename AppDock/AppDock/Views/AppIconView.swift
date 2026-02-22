@@ -81,7 +81,7 @@ struct AppIconView: View {
         .contentShape(Rectangle())
         .onTapGesture { onLaunch() }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.easeOut(duration: 0.08)) {
                 isHovered = hovering
             }
             onHoverChanged?(hovering)
@@ -180,14 +180,9 @@ private struct AppIconContent: View, Equatable {
 
             if showName {
                 HStack(alignment: .top, spacing: 4) {
-                    if showNewDot {
+                    if showNewDot || showUpdatedDot {
                         Circle()
-                            .fill(.blue)
-                            .frame(width: 7, height: 7)
-                            .frame(height: NSFont.systemFont(ofSize: 12).boundingRectForFont.height)
-                    } else if showUpdatedDot {
-                        Circle()
-                            .fill(.orange)
+                            .fill(showNewDot ? .blue : .orange)
                             .frame(width: 7, height: 7)
                             .frame(height: NSFont.systemFont(ofSize: 12).boundingRectForFont.height)
                     }
@@ -197,6 +192,11 @@ private struct AppIconContent: View, Equatable {
                         .lineLimit(2)
                         .truncationMode(.tail)
                         .multilineTextAlignment(.center)
+                    if showNewDot || showUpdatedDot {
+                        Circle()
+                            .fill(.clear)
+                            .frame(width: 7, height: 7)
+                    }
                 }
                 .frame(width: size + 16, alignment: .top)
             }

@@ -68,7 +68,7 @@ struct CategoryTileView: View {
             }
         }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.easeOut(duration: 0.08)) {
                 isHovered = hovering
             }
             onHoverChanged?(hovering)

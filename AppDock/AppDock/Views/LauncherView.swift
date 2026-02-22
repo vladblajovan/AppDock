@@ -365,7 +365,7 @@ struct LauncherView: View {
                 guard let idx = newIndex else { return }
                 let cats = viewModel.carouselCategories
                 guard idx < cats.count else { return }
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(.easeOut(duration: 0.08)) {
                     proxy.scrollTo(cats[idx], anchor: .center)
                 }
             }
@@ -430,7 +430,7 @@ struct LauncherView: View {
                 }
                 .onEnded { _ in
                     let wasDrag = didDragMove
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeOut(duration: 0.08)) {
                         draggingCategory = nil
                         categoryDragOffset = .zero
                         categoryDragBaseOffset = .zero
@@ -480,7 +480,7 @@ struct LauncherView: View {
                 height: categoryDragBaseOffset.height + (currentFrame.midY - frame.midY)
             )
 
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeOut(duration: 0.08)) {
                 viewModel.categoryViewModel.moveCategory(
                     from: IndexSet(integer: fromIndex),
                     to: toIndex > fromIndex ? toIndex + 1 : toIndex
