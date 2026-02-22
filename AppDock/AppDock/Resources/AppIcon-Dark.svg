@@ -1,75 +1,72 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Glass gradient background -->
+    <!-- Very subtle dark gradient — matches Safari/native icon depth -->
     <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#3A3F4B" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#1E2028" stop-opacity="1"/>
+      <stop offset="0%" stop-color="#1A1E25"/>
+      <stop offset="100%" stop-color="#111318"/>
     </linearGradient>
 
-    <!-- Top shine for glass effect -->
+    <!-- Very subtle top shine -->
     <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
-      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.02"/>
       <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
 
-    <!-- Shadow for the grid dots -->
-    <filter id="dotShadow">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    <!-- Shadow for grid items -->
+    <filter id="itemShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.35"/>
     </filter>
 
-    <!-- Glow behind grid -->
+    <!-- Subtle center glow -->
     <radialGradient id="gridGlow" cx="0.5" cy="0.55" r="0.45">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.03"/>
       <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Search bar gradient -->
+    <!-- Search bar — more prominent like native Apps icon -->
     <linearGradient id="searchBarGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.12"/>
     </linearGradient>
   </defs>
 
-  <!-- Background — full bleed, macOS applies squircle mask automatically -->
+  <!-- Background -->
   <rect width="1024" height="1024" fill="url(#bgGrad)"/>
-
-  <!-- Subtle radial glow in center -->
   <rect width="1024" height="1024" fill="url(#gridGlow)"/>
-
-  <!-- Glass shine overlay -->
   <rect width="1024" height="512" fill="url(#shine)"/>
 
-  <!-- Search bar -->
-  <rect x="200" y="215" width="624" height="72" rx="36" ry="36" fill="url(#searchBarGrad)" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+  <!-- Search bar — matches grid width, 1.2x -->
+  <rect x="218" y="108" width="588" height="91" rx="22" fill="url(#searchBarGrad)" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
 
-  <!-- Magnifying glass icon in search bar -->
-  <g transform="translate(235, 234)" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="4.5" stroke-linecap="round">
-    <circle cx="16" cy="16" r="12"/>
-    <line x1="24" y1="24" x2="33" y2="33"/>
+  <!-- Magnifying glass icon -->
+  <g transform="translate(252, 132)" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="6" stroke-linecap="round">
+    <circle cx="18" cy="18" r="14"/>
+    <line x1="28" y1="28" x2="38" y2="38"/>
   </g>
 
-  <!-- Search placeholder text lines -->
-  <rect x="280" y="242" width="120" height="10" rx="5" fill="#ffffff" fill-opacity="0.2"/>
+  <!-- Placeholder text -->
+  <rect x="306" y="142" width="144" height="13" rx="7" fill="#ffffff" fill-opacity="0.22"/>
 
-  <!-- 3x3 Grid of app dots -->
-  <g filter="url(#dotShadow)">
+  <!-- 3x3 Grid of rounded-rect app icons, 1.2x scaled -->
+  <!-- Items: 156x156, uniform gap: 60px both axes -->
+  <g filter="url(#itemShadow)">
     <!-- Row 1 -->
-    <circle cx="340" cy="420" r="68" fill="#FF6B6B"/>
-    <circle cx="512" cy="420" r="68" fill="#4ECDC4"/>
-    <circle cx="684" cy="420" r="68" fill="#45B7D1"/>
+    <rect x="218" y="258" width="156" height="156" rx="34" fill="#FF6B6B"/>
+    <rect x="434" y="258" width="156" height="156" rx="34" fill="#4ECDC4"/>
+    <rect x="650" y="258" width="156" height="156" rx="34" fill="#45B7D1"/>
 
     <!-- Row 2 -->
-    <circle cx="340" cy="590" r="68" fill="#96CEB4"/>
-    <circle cx="512" cy="590" r="68" fill="#FFEAA7"/>
-    <circle cx="684" cy="590" r="68" fill="#DDA0DD"/>
+    <rect x="218" y="474" width="156" height="156" rx="34" fill="#96CEB4"/>
+    <rect x="434" y="474" width="156" height="156" rx="34" fill="#FFEAA7"/>
+    <rect x="650" y="474" width="156" height="156" rx="34" fill="#DDA0DD"/>
 
     <!-- Row 3 -->
-    <circle cx="340" cy="760" r="68" fill="#F39C12"/>
-    <circle cx="512" cy="760" r="68" fill="#6C5CE7"/>
-    <circle cx="684" cy="760" r="68" fill="#55E6C1"/>
+    <rect x="218" y="690" width="156" height="156" rx="34" fill="#F39C12"/>
+    <rect x="434" y="690" width="156" height="156" rx="34" fill="#6C5CE7"/>
+    <rect x="650" y="690" width="156" height="156" rx="34" fill="#55E6C1"/>
   </g>
 
   <!-- Top edge highlight -->
-  <rect x="0" y="0" width="1024" height="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="0" y="0" width="1024" height="2" fill="#ffffff" opacity="0.08"/>
 </svg>
